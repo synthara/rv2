@@ -12,7 +12,6 @@
 
 `include "prim_assert.sv"
 
-import cve2_pkg::*;
 module cve2_cs_registers #(
   parameter bit               DbgTriggerEn      = 0,
   parameter int unsigned      DbgHwBreakNum     = 1,
@@ -25,6 +24,7 @@ module cve2_cs_registers #(
   parameter cve2_pkg::rv32m_e RV32M             = cve2_pkg::RV32MFast,
   parameter cve2_pkg::rv32b_e RV32B             = cve2_pkg::RV32BNone
 ) (
+
   // Clock and Reset
   input  logic                 clk_i,
   input  logic                 rst_ni,
@@ -104,6 +104,7 @@ module cve2_cs_registers #(
   input  logic                 div_wait_i                   // core waiting for divide
 );
 
+import cve2_pkg::*;
 
   localparam int unsigned RV32BEnabled = (RV32B == RV32BNone) ? 0 : 1;
   localparam int unsigned RV32MEnabled = (RV32M == RV32MNone) ? 0 : 1;
