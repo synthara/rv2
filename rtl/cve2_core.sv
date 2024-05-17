@@ -1063,7 +1063,7 @@ module cve2_core import cve2_pkg::*; #(
         rvfi_stage_valid[i] <= rvfi_stage_valid_d[i];
 
         if (i == 0) begin
-          if (rvfi_id_done) begin
+          if (rvfi_stage_valid_d[i]) begin
             rvfi_stage_halt[i]      <= '0;
             // TODO: Sort this out for writeback stage
             rvfi_stage_trap[i]            <= rvfi_trap_id;
