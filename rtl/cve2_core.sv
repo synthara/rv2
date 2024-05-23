@@ -920,6 +920,32 @@ module cve2_core import cve2_pkg::*; #(
   assign rvfi_mem_rdata = rvfi_stage_mem_rdata[RVFI_STAGES-1];
   assign rvfi_mem_wdata = rvfi_stage_mem_wdata[RVFI_STAGES-1];
 
+  assign rvfi_instr_if.rvfi_valid     = rvfi_stage_valid    [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_order     = rvfi_stage_order    [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_insn      = rvfi_stage_insn     [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_trap      = rvfi_stage_trap     [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_halt      = rvfi_stage_halt     [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_dbg       = rvfi_ext_stage_debug_req [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_dbg_mode  = rvfi_ext_stage_debug_req [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_intr      = rvfi_stage_intr     [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_mode      = rvfi_stage_mode     [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_ixl       = rvfi_stage_ixl      [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rs1_addr  = rvfi_stage_rs1_addr [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rs2_addr  = rvfi_stage_rs2_addr [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rs3_addr  = rvfi_stage_rs3_addr [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rs1_rdata = rvfi_stage_rs1_rdata[RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rs2_rdata = rvfi_stage_rs2_rdata[RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rs3_rdata = rvfi_stage_rs3_rdata[RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rd1_addr   = rvfi_stage_rd_addr  [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_rd1_wdata  = rvfi_stage_rd_wdata [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_pc_rdata  = rvfi_stage_pc_rdata [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_pc_wdata  = rvfi_stage_pc_wdata [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_mem_addr  = rvfi_stage_mem_addr [RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_mem_rmask = rvfi_stage_mem_rmask[RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_mem_wmask = rvfi_stage_mem_wmask[RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_mem_rdata = rvfi_stage_mem_rdata[RVFI_STAGES-1];
+  assign rvfi_instr_if.rvfi_mem_wdata = rvfi_stage_mem_wdata[RVFI_STAGES-1];
+
   assign rvfi_rd_addr_wb  = rf_waddr_wb;
   assign rvfi_rd_wdata_wb = rf_we_wb ? rf_wdata_wb : rf_wdata_lsu;
   assign rvfi_rd_we_wb    = rf_we_wb | rf_we_lsu;

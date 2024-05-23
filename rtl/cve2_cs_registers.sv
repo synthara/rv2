@@ -1531,7 +1531,7 @@ import cve2_pkg::*;
    `RVFI_CONNECT( CSR_MSTATUS,          mstatus                     ,  mstatus_extended_read  , mstatus_extended_write , , || mstatus_en)
    `RVFI_CONNECT( CSR_MIE,              mie                         ,  mie_extended_read      , mie_extended_write     , , || mie_en    )
    `RVFI_CONNECT( CSR_MIP,              mip                         ,  mip_extended_read      , mip_extended_read      , , )
-   `RVFI_CONNECT( CSR_MISA,             misa                        ,  MISA_VALUE             , csr_wdata_int          , ,              )
+   `RVFI_CONNECT( CSR_MISA,             misa                        ,  MISA_VALUE             , MISA_VALUE             , ,              )
    `RVFI_CONNECT( CSR_MTVEC,            mtvec                       ,  mtvec_q                , mtvec_d                , , || mtvec_en  )
    `RVFI_CONNECT( CSR_MEPC,             mepc                        ,  mepc_q                 , mepc_d                 , , || mepc_en   )
    `RVFI_CONNECT( CSR_MCAUSE,           mcause                      ,  mcause_extended_read   , mcause_extended_write  , , || mcause_en )
