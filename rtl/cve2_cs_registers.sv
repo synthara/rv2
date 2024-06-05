@@ -1484,7 +1484,7 @@ import cve2_pkg::*;
 
     wire [63:0] rvfi_csr_bypass;
 
-    assign rvfi_csr_bypass = csr_save_cause_i;
+    assign rvfi_csr_bypass = csr_save_cause_i | debug_csr_save_i;
 
     bit [63:0] rvfi_csr_addr;
     bit [63:0] rvfi_csr_rdata;
