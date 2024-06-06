@@ -909,8 +909,6 @@ module cve2_core import cve2_pkg::*; #(
   assign rvfi_insn      = rvfi_stage_insn     [RVFI_STAGES-1];
   assign rvfi_trap      = rvfi_stage_trap     [RVFI_STAGES-1];
   assign rvfi_halt      = rvfi_stage_halt     [RVFI_STAGES-1];
-  //assign rvfi_dbg       = rvfi_stage_dbg      [RVFI_STAGES-1];
-  //assign rvfi_dbg_mode  = rvfi_stage_dbg_mode [RVFI_STAGES-1];
   assign rvfi_intr      = rvfi_stage_intr     [RVFI_STAGES-1];
   assign rvfi_mode      = rvfi_stage_mode     [RVFI_STAGES-1];
   assign rvfi_ixl       = rvfi_stage_ixl      [RVFI_STAGES-1];
