@@ -1,18 +1,7 @@
 rv2_base = {
     "config_name": "rv2_base",
 
-    "rtl_files": [],
-
-    ## TODO: All the following can be avoided just by including the cv32e20_manifest.flist
-    "rtl_incdirs": [
-        "/../shared/rtl/",
-        "/../rtl",
-        "/../shared/rtl/sim",
-        "/../vendor/lowrisc_ip/ip/prim/rtl",
-        "/../vendor/lowrisc_ip/dv/sv/dv_utils",
-    ],
-
-    "rtl_dependencies": [ 
+    "rtl_files": [
         "rtl/cve2_pkg.sv",
         "rtl/cve2_tracer_pkg.sv",
         "rtl/../vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv",
@@ -40,6 +29,17 @@ rv2_base = {
         "rtl/cve2_top_tracing.sv",
         "rtl/cve2_tracer.sv",
     ],
+
+    ## TODO: All the following can be avoided just by including the cv32e20_manifest.flist
+    "rtl_incdirs": [
+        "shared/rtl/",
+        "rtl",
+        "shared/rtl/sim",
+        "vendor/lowrisc_ip/ip/prim/rtl",
+        "vendor/lowrisc_ip/dv/sv/dv_utils",
+    ],
+
+    "rtl_dependencies": [],
 
     "tb_files": [],
 
