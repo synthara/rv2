@@ -28,6 +28,7 @@ rv2_base = {
         "rtl/cve2_top.sv",
         "rtl/cve2_top_tracing.sv",
         "rtl/cve2_tracer.sv",
+        "rtl/../bhv/cve2_sim_clock_gate.sv"
     ],
 
     ## TODO: All the following can be avoided just by including the cv32e20_manifest.flist
