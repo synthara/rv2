@@ -54,6 +54,31 @@ module cve2_core import cve2_pkg::*; #(
   input  logic [31:0]                  data_rdata_i,
   input  logic                         data_err_i,
 
+//---------------------------------------------------------------------------------
+  //CV-X-IF
+  //Issue interface
+  output logic                         xif_issue_valid,
+  output logic[31:0]                   xif_issue_req_instr,
+  input  logic                         xif_issue_ready,
+  input  logic                         xif_issue_resp_accept,
+  input  logic                         xif_issue_resp_writeback,
+  input  logic                         xif_issue_resp_register_read,
+  //Register interface
+  output logic [31:0]                  xif_register_rs1,
+  output logic [31:0]                  xif_register_rs2,
+  output logic [31:0]                  xif_register_rs3,
+  output logic [2:0]                   xif_register_rs_valid,
+  //Commit interface
+  output logic                         xif_commit_valid,
+  output logic                         xif_commit_kill,
+  //Result interface
+  output logic                         xif_result_ready,
+  input  logic                         xif_result_valid,
+  //input  logic[4:0]                    xif_result_rd,
+  input  logic                         xif_result_we,
+  input  logic[31:0]                   xif_result_data,
+//---------------------------------------------------------------------------------
+
   // Interrupt inputs
   input  logic                         irq_software_i,
   input  logic                         irq_timer_i,
@@ -157,6 +182,13 @@ module cve2_core import cve2_pkg::*; #(
   logic [31:0] rf_rdata_b;
   logic        rf_ren_a;
   logic        rf_ren_b;
+
+//---------------------------------------------------------------------------------
+  logic [4:0]  rf_raddr_c;
+  logic [31:0] rf_rdata_c;
+  logic        rf_ren_c;
+//---------------------------------------------------------------------------------
+
   logic [4:0]  rf_waddr_wb;
   logic [31:0] rf_wdata_wb;
   // Writeback register write data that can be used on the forwarding path (doesn't factor in memory
@@ -437,6 +469,31 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_load_err_i (lsu_load_err),
     .lsu_store_err_i(lsu_store_err),
 
+//---------------------------------------------------------------------------------
+  //CV-X-IF
+  //Issue interface
+    .xif_issue_valid(xif_issue_valid),
+    .xif_issue_req_instr(xif_issue_req_instr),
+    .xif_issue_ready(xif_issue_ready),
+    .xif_issue_resp_accept(xif_issue_resp_accept),
+    .xif_issue_resp_writeback(xif_issue_resp_writeback),
+    .xif_issue_resp_register_read(xif_issue_resp_register_read),
+    // Register interface
+    .xif_register_rs1(xif_register_rs1),
+    .xif_register_rs2(xif_register_rs2),
+    .xif_register_rs3(xif_register_rs3),
+    .xif_register_rs_valid(xif_register_rs_valid),
+    // Commit interface
+    .xif_commit_valid(xif_commit_valid),
+    .xif_commit_kill(xif_commit_kill),
+    // Result interface
+    .xif_result_ready(xif_result_ready),
+    .xif_result_valid(xif_result_valid),
+    //.xif_result_rd(xif_result_rd),
+    .xif_result_we(xif_result_we),
+    .xif_result_data(xif_result_data),
+//---------------------------------------------------------------------------------
+
     // Interrupt Signals
     .csr_mstatus_mie_i(csr_mstatus_mie),
     .irq_pending_i    (irq_pending_o),
@@ -462,8 +519,19 @@ module cve2_core import cve2_pkg::*; #(
     .rf_rdata_a_i      (rf_rdata_a),
     .rf_raddr_b_o      (rf_raddr_b),
     .rf_rdata_b_i      (rf_rdata_b),
+
+  //---------------------------------------------------------------------------------
+    .rf_raddr_c_o      (rf_raddr_c),
+    .rf_rdata_c_i      (rf_rdata_c)
+//---------------------------------------------------------------------------------
+
     .rf_ren_a_o        (rf_ren_a),
     .rf_ren_b_o        (rf_ren_b),
+
+  //---------------------------------------------------------------------------------
+    .rf_ren_c_o        (rf_ren_c),
+  //---------------------------------------------------------------------------------
+
     .rf_waddr_id_o     (rf_waddr_id),
     .rf_wdata_id_o     (rf_wdata_id),
     .rf_we_id_o        (rf_we_id),
@@ -653,6 +721,12 @@ module cve2_core import cve2_pkg::*; #(
     .rdata_a_o(rf_rdata_a),
     .raddr_b_i(rf_raddr_b),
     .rdata_b_o(rf_rdata_b),
+
+//---------------------------------------------------------------------------------
+      .raddr_c_i(rf_raddr_c),
+      .rdata_c_o(rf_rdata_c),
+//---------------------------------------------------------------------------------
+
     .waddr_a_i(rf_waddr_wb),
     .wdata_a_i(rf_wdata_wb),
     .we_a_i   (rf_we_wb)

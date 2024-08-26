@@ -54,9 +54,18 @@ module cve2_decoder #(
   output logic                 rf_we_o,          // write enable for regfile
   output logic [4:0]           rf_raddr_a_o,
   output logic [4:0]           rf_raddr_b_o,
+
+//---------------------------------------------------------------------------------
+  output logic [4:0]           rf_raddr_c_o,
+//---------------------------------------------------------------------------------
+
   output logic [4:0]           rf_waddr_o,
   output logic                 rf_ren_a_o,          // Instruction reads from RF addr A
   output logic                 rf_ren_b_o,          // Instruction reads from RF addr B
+
+//---------------------------------------------------------------------------------
+  output logic                 rf_ren_c_o,
+//---------------------------------------------------------------------------------
 
   // ALU
   output cve2_pkg::alu_op_e    alu_operator_o,        // ALU operation selection
@@ -86,6 +95,13 @@ module cve2_decoder #(
                                                       // word or word
   output logic                 data_sign_extension_o, // sign extension for data read from
                                                       // memory
+
+//---------------------------------------------------------------------------------
+  // Coprocessor
+  input  logic[2:0]            xif_issue_resp_register_read,
+  input  logic                 xif_issue_resp_writeback,
+  output logic                 coproc_instr_valid,
+//---------------------------------------------------------------------------------                                                      
 
   // jump/branches
   output logic                 jump_in_dec_o,         // jump is being calculated in ALU
@@ -164,6 +180,10 @@ module cve2_decoder #(
   assign rf_raddr_a_o = (use_rs3_q & ~instr_first_cycle_i) ? instr_rs3 : instr_rs1; // rs3 / rs1
   assign rf_raddr_b_o = instr_rs2; // rs2
 
+//---------------------------------------------------------------------------------
+  assign rf_raddr_c_o = instr_rs3;
+//---------------------------------------------------------------------------------
+
   // destination register
   assign instr_rd = instr[11:7];
   assign rf_waddr_o   = instr_rd; // rd
@@ -210,6 +230,10 @@ module cve2_decoder #(
     rf_ren_a_o            = 1'b0;
     rf_ren_b_o            = 1'b0;
 
+//---------------------------------------------------------------------------------
+    rf_ren_c_o            = 1'b0;
+//---------------------------------------------------------------------------------
+
     csr_access_o          = 1'b0;
     csr_illegal           = 1'b0;
     csr_op                = CSR_OP_READ;
@@ -218,6 +242,10 @@ module cve2_decoder #(
     data_type_o           = 2'b00;
     data_sign_extension_o = 1'b0;
     data_req_o            = 1'b0;
+
+//---------------------------------------------------------------------------------
+    coproc_instr_valid    = 1'b0;
+//---------------------------------------------------------------------------------
 
     illegal_insn          = 1'b0;
     ebrk_insn_o           = 1'b0;
@@ -632,6 +660,21 @@ module cve2_decoder #(
       end
       default: begin
         illegal_insn = 1'b1;
+
+//---------------------------------------------------------------------------------
+        for(int i = 0; i < 32; i++) begin
+          if(COPROC_OPCODE[i] && (instr[6:2] == i)) begin
+            coproc_instr_valid = 1'b1;
+            rf_ren_a_o         = xif_issue_resp_register_read[0];     
+            rf_ren_b_o         = xif_issue_resp_register_read[1];      
+            rf_ren_c_o         = xif_issue_resp_register_read[2];      
+            rf_we              = xif_issue_resp_writeback;                          
+            rf_wdata_sel_o     = RF_WD_COPROC;
+            illegal_insn       = 1'b0;
+          end
+        end
+//---------------------------------------------------------------------------------
+
       end
     endcase
 
