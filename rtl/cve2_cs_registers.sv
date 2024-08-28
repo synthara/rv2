@@ -185,6 +185,12 @@ import cve2_pkg::*;
   logic [31:0] dscratch1_q;
   logic        dscratch0_en, dscratch1_en;
 
+//---------------------------------------------------------------------------------
+  logic        vec_mode_d, vec_mode_q;
+  logic        vec_mode_en;
+  assign       vec_mode_d = csr_wdata_i;
+//---------------------------------------------------------------------------------
+
   // CSRs for recoverable NMIs
   // NOTE: these CSRS are nonstandard, see https://github.com/riscv/riscv-isa-manual/issues/261
   status_stk_t mstack_q, mstack_d;
@@ -465,6 +471,12 @@ import cve2_pkg::*;
         csr_rdata_int = '0;
       end
 
+//---------------------------------------------------------------------------------
+      CSR_VEC_MODE: begin
+        csr_rdata_int = vec_mode_q;
+      end
+//---------------------------------------------------------------------------------
+
       default: begin
         illegal_csr = 1'b1;
       end
@@ -495,6 +507,10 @@ import cve2_pkg::*;
     mcause_en    = 1'b0;
     mcause_d     = {csr_wdata_int[31], csr_wdata_int[5:0]};
     mtval_en     = 1'b0;
+
+//---------------------------------------------------------------------------------
+    vec_mode_en  = 1'b0;
+//---------------------------------------------------------------------------------
     mtval_d      = csr_wdata_int;
     mtvec_en     = csr_mtvec_init_i;
     // mtvec.MODE set to vectored
@@ -549,6 +565,10 @@ import cve2_pkg::*;
 
         // mtval: trap value
         CSR_MTVAL: mtval_en = 1'b1;
+
+//---------------------------------------------------------------------------------
+        CSR_VEC_MODE: vec_mode_en = 1'b1;
+//---------------------------------------------------------------------------------
 
         // mtvec
         CSR_MTVEC: mtvec_en = 1'b1;
@@ -737,6 +757,7 @@ import cve2_pkg::*;
   assign csr_depc_o  = depc_q;
   assign csr_mtvec_o = mtvec_q;
 
+
   assign csr_mstatus_mie_o   = mstatus_q.mie;
   assign csr_mstatus_tw_o    = mstatus_q.tw;
   assign debug_single_step_o = dcsr_q.step;
@@ -856,6 +877,21 @@ import cve2_pkg::*;
     .rd_data_o (mtvec_q),
     .rd_error_o()
   );
+
+//---------------------------------------------------------------------------------
+ // VEC MODE
+  cve2_csr #(
+    .Width     (32),
+    .ResetValue(32'd1)
+  ) u_vec_mode_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (vec_mode_d),
+    .wr_en_i   (vec_mode_en),
+    .rd_data_o (vec_mode_q),
+    .rd_error_o()
+  );
+//---------------------------------------------------------------------------------
 
   // DCSR
   localparam dcsr_t DCSR_RESET_VAL = '{

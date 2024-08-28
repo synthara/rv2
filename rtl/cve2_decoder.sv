@@ -14,9 +14,10 @@
 `include "prim_assert.sv"
 
 module cve2_decoder #(
-  parameter bit RV32E               = 0,
-  parameter cve2_pkg::rv32m_e RV32M = cve2_pkg::RV32MFast,
-  parameter cve2_pkg::rv32b_e RV32B = cve2_pkg::RV32BNone
+  parameter bit RV32E                = 0,
+  parameter cve2_pkg::rv32m_e RV32M  = cve2_pkg::RV32MFast,
+  parameter cve2_pkg::rv32b_e RV32B  = cve2_pkg::RV32BNone,
+  parameter bit [31:0] COPROC_OPCODE = '0
 ) (
   input  logic                 clk_i,
   input  logic                 rst_ni,
@@ -98,9 +99,9 @@ module cve2_decoder #(
 
 //---------------------------------------------------------------------------------
   // Coprocessor
-  input  logic[2:0]            xif_issue_resp_register_read,
-  input  logic                 xif_issue_resp_writeback,
-  output logic                 coproc_instr_valid,
+  input  logic[2:0]            xif_issue_resp_register_read_i,
+  input  logic                 xif_issue_resp_writeback_i,
+  output logic                 coproc_instr_valid_o,
 //---------------------------------------------------------------------------------                                                      
 
   // jump/branches
@@ -244,7 +245,7 @@ module cve2_decoder #(
     data_req_o            = 1'b0;
 
 //---------------------------------------------------------------------------------
-    coproc_instr_valid    = 1'b0;
+    coproc_instr_valid_o  = 1'b0;
 //---------------------------------------------------------------------------------
 
     illegal_insn          = 1'b0;
@@ -664,11 +665,11 @@ module cve2_decoder #(
 //---------------------------------------------------------------------------------
         for(int i = 0; i < 32; i++) begin
           if(COPROC_OPCODE[i] && (instr[6:2] == i)) begin
-            coproc_instr_valid = 1'b1;
-            rf_ren_a_o         = xif_issue_resp_register_read[0];     
-            rf_ren_b_o         = xif_issue_resp_register_read[1];      
-            rf_ren_c_o         = xif_issue_resp_register_read[2];      
-            rf_we              = xif_issue_resp_writeback;                          
+            coproc_instr_valid_o = 1'b1;
+            rf_ren_a_o         = xif_issue_resp_register_read_i[0];     
+            rf_ren_b_o         = xif_issue_resp_register_read_i[1];      
+            rf_ren_c_o         = xif_issue_resp_register_read_i[2];      
+            rf_we              = xif_issue_resp_writeback_i;                          
             rf_wdata_sel_o     = RF_WD_COPROC;
             illegal_insn       = 1'b0;
           end

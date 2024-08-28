@@ -260,7 +260,7 @@ package cve2_pkg;
   } imm_b_sel_e;
 
   // Regfile write data selection
-  typedef enum logic {
+  typedef enum logic[2:0] {
     RF_WD_EX,
     RF_WD_CSR,
 
@@ -528,7 +528,12 @@ package cve2_pkg;
     CSR_MHPMCOUNTER30H = 12'hB9E,
     CSR_MHPMCOUNTER31H = 12'hB9F,
     CSR_CPUCTRL        = 12'h7C0,
-    CSR_SECURESEED     = 12'h7C1
+    CSR_SECURESEED     = 12'h7C1,
+
+//---------------------------------------------------------------------------------
+    CSR_VEC_MODE       = 12'hCA0
+//---------------------------------------------------------------------------------
+
   } csr_num_e;
 
   // CSR pmp-related offsets

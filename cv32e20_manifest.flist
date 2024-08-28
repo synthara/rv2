@@ -61,3 +61,4 @@ ${DESIGN_RTL_DIR}/cve2_top_tracing.sv
 ${DESIGN_RTL_DIR}/cve2_tracer.sv
 
 ${DESIGN_RTL_DIR}/../bhv/cve2_sim_clock_gate.sv
+

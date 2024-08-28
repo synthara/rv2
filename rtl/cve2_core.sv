@@ -55,28 +55,27 @@ module cve2_core import cve2_pkg::*; #(
   input  logic                         data_err_i,
 
 //---------------------------------------------------------------------------------
-  //CV-X-IF
-  //Issue interface
-  output logic                         xif_issue_valid,
-  output logic[31:0]                   xif_issue_req_instr,
-  input  logic                         xif_issue_ready,
-  input  logic                         xif_issue_resp_accept,
-  input  logic                         xif_issue_resp_writeback,
-  input  logic                         xif_issue_resp_register_read,
-  //Register interface
-  output logic [31:0]                  xif_register_rs1,
-  output logic [31:0]                  xif_register_rs2,
-  output logic [31:0]                  xif_register_rs3,
-  output logic [2:0]                   xif_register_rs_valid,
-  //Commit interface
-  output logic                         xif_commit_valid,
-  output logic                         xif_commit_kill,
-  //Result interface
-  output logic                         xif_result_ready,
-  input  logic                         xif_result_valid,
-  //input  logic[4:0]                    xif_result_rd,
-  input  logic                         xif_result_we,
-  input  logic[31:0]                   xif_result_data,
+  // CV-X-IF
+  // Issue interface
+  output logic                         xif_issue_valid_o,
+  output logic [31:0]                  xif_issue_req_instr_o,
+  input  logic                         xif_issue_ready_i,
+  input  logic                         xif_issue_resp_accept_i,
+  input  logic                         xif_issue_resp_writeback_i,
+  input  logic [2:0]                   xif_issue_resp_register_read_i,
+  // Register interface
+  output logic [31:0]                  xif_register_rs1_o,
+  output logic [31:0]                  xif_register_rs2_o,
+  output logic [31:0]                  xif_register_rs3_o,
+  output logic [2:0]                   xif_register_rs_valid_o,
+  // Commit interface
+  output logic                         xif_commit_valid_o,
+  output logic                         xif_commit_kill_o,
+  // Result interface
+  output logic                         xif_result_ready_o,
+  input  logic                         xif_result_valid_i,
+  input  logic                         xif_result_we_i,
+  input  logic [31:0]                  xif_result_data_i,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -470,28 +469,27 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_store_err_i(lsu_store_err),
 
 //---------------------------------------------------------------------------------
-  //CV-X-IF
-  //Issue interface
-    .xif_issue_valid(xif_issue_valid),
-    .xif_issue_req_instr(xif_issue_req_instr),
-    .xif_issue_ready(xif_issue_ready),
-    .xif_issue_resp_accept(xif_issue_resp_accept),
-    .xif_issue_resp_writeback(xif_issue_resp_writeback),
-    .xif_issue_resp_register_read(xif_issue_resp_register_read),
+    // CV-X-IF
+    // Issue interface
+    .xif_issue_valid_o(xif_issue_valid_o),
+    .xif_issue_req_instr_o(xif_issue_req_instr_o),
+    .xif_issue_ready_i(xif_issue_ready_i),
+    .xif_issue_resp_accept_i(xif_issue_resp_accept_i),
+    .xif_issue_resp_writeback_i(xif_issue_resp_writeback_i),
+    .xif_issue_resp_register_read_i(xif_issue_resp_register_read_i),
     // Register interface
-    .xif_register_rs1(xif_register_rs1),
-    .xif_register_rs2(xif_register_rs2),
-    .xif_register_rs3(xif_register_rs3),
-    .xif_register_rs_valid(xif_register_rs_valid),
+    .xif_register_rs1_o(xif_register_rs1_o),
+    .xif_register_rs2_o(xif_register_rs2_o),
+    .xif_register_rs3_o(xif_register_rs3_o),
+    .xif_register_rs_valid_o(xif_register_rs_valid_o),
     // Commit interface
-    .xif_commit_valid(xif_commit_valid),
-    .xif_commit_kill(xif_commit_kill),
+    .xif_commit_valid_o(xif_commit_valid_o),
+    .xif_commit_kill_o(xif_commit_kill_o),
     // Result interface
-    .xif_result_ready(xif_result_ready),
-    .xif_result_valid(xif_result_valid),
-    //.xif_result_rd(xif_result_rd),
-    .xif_result_we(xif_result_we),
-    .xif_result_data(xif_result_data),
+    .xif_result_ready_o(xif_result_ready_o),
+    .xif_result_valid_i(xif_result_valid_i),
+    .xif_result_we_i(xif_result_we_i),
+    .xif_result_data_i(xif_result_data_i),
 //---------------------------------------------------------------------------------
 
     // Interrupt Signals
@@ -520,17 +518,17 @@ module cve2_core import cve2_pkg::*; #(
     .rf_raddr_b_o      (rf_raddr_b),
     .rf_rdata_b_i      (rf_rdata_b),
 
-  //---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
     .rf_raddr_c_o      (rf_raddr_c),
-    .rf_rdata_c_i      (rf_rdata_c)
+    .rf_rdata_c_i      (rf_rdata_c),
 //---------------------------------------------------------------------------------
 
     .rf_ren_a_o        (rf_ren_a),
     .rf_ren_b_o        (rf_ren_b),
 
-  //---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
     .rf_ren_c_o        (rf_ren_c),
-  //---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 
     .rf_waddr_id_o     (rf_waddr_id),
     .rf_wdata_id_o     (rf_wdata_id),

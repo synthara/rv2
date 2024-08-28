@@ -18,9 +18,10 @@
 `include "dv_fcov_macros.svh"
 
 module cve2_id_stage #(
-  parameter bit               RV32E           = 0,
-  parameter cve2_pkg::rv32m_e RV32M           = cve2_pkg::RV32MFast,
-  parameter cve2_pkg::rv32b_e RV32B           = cve2_pkg::RV32BNone
+  parameter bit               RV32E  = 0,
+  parameter cve2_pkg::rv32m_e RV32M  = cve2_pkg::RV32MFast,
+  parameter cve2_pkg::rv32b_e RV32B  = cve2_pkg::RV32BNone,
+  parameter bit [31:0] COPROC_OPCODE = '0
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -103,28 +104,27 @@ module cve2_id_stage #(
   input  logic [31:0]               lsu_addr_last_i,
 
 //---------------------------------------------------------------------------------
-  //CV-X-IF
-  //Issue interface
-  output logic                      xif_issue_valid,
-  output logic[31:0]                xif_issue_req_instr,
-  input  logic                      xif_issue_ready,
-  input  logic                      xif_issue_resp_accept,
-  input  logic                      xif_issue_resp_writeback,
-  input  logic                      xif_issue_resp_register_read,
-  //Register interface
-  output logic [31:0]               xif_register_rs1,
-  output logic [31:0]               xif_register_rs2,
-  output logic [31:0]               xif_register_rs3,
-  output logic [2:0]                xif_register_rs_valid,
-  //Commit interface
-  output logic                      xif_commit_valid,
-  output logic                      xif_commit_kill,
-  //Result interface
-  output logic                      xif_result_ready,
-  input  logic                      xif_result_valid,
-  //input  logic[4:0]                 xif_result_rd, ##### IT IS NOT USED #####
-  input  logic                      xif_result_we,
-  input  logic[31:0]                xif_result_data,
+  // CV-X-IF
+  // Issue interface
+  output logic                         xif_issue_valid_o,
+  output logic [31:0]                  xif_issue_req_instr_o,
+  input  logic                         xif_issue_ready_i,
+  input  logic                         xif_issue_resp_accept_i,
+  input  logic                         xif_issue_resp_writeback_i,
+  input  logic [2:0]                   xif_issue_resp_register_read_i,
+  // Register interface
+  output logic [31:0]                  xif_register_rs1_o,
+  output logic [31:0]                  xif_register_rs2_o,
+  output logic [31:0]                  xif_register_rs3_o,
+  output logic [2:0]                   xif_register_rs_valid_o,
+  // Commit interface
+  output logic                         xif_commit_valid_o,
+  output logic                         xif_commit_kill_o,
+  // Result interface
+  output logic                         xif_result_ready_o,
+  input  logic                         xif_result_valid_i,
+  input  logic                         xif_result_we_i,
+  input  logic [31:0]                  xif_result_data_i,
 //---------------------------------------------------------------------------------
 
   // Interrupt signals
@@ -389,7 +389,7 @@ module cve2_id_stage #(
       RF_WD_CSR: rf_wdata_id_o = csr_rdata_i;
 
 //---------------------------------------------------------------------------------
-      RF_WD_COPROC: rf_wdata_id_o = xif_result_data;
+      RF_WD_COPROC: rf_wdata_id_o = xif_result_data_i;
 //---------------------------------------------------------------------------------
       default:   rf_wdata_id_o = result_ex_i;
     endcase
@@ -402,7 +402,8 @@ module cve2_id_stage #(
   cve2_decoder #(
     .RV32E          (RV32E),
     .RV32M          (RV32M),
-    .RV32B          (RV32B)
+    .RV32B          (RV32B),
+    .COPROC_OPCODE  (COPROC_OPCODE)
   ) decoder_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -478,9 +479,9 @@ module cve2_id_stage #(
 
 //---------------------------------------------------------------------------------
     // Coprocessor
-    .xif_issue_resp_register_read(xif_issue_resp_register_read),
-    .xif_issue_resp_writeback(xif_issue_resp_writeback),
-    .coproc_instr_valid(coproc_instr_valid),
+    .xif_issue_resp_register_read_i(xif_issue_resp_register_read_i),
+    .xif_issue_resp_writeback_i(xif_issue_resp_writeback_i),
+    .coproc_instr_valid_o(coproc_instr_valid),
 //---------------------------------------------------------------------------------
 
     // jump/branches
@@ -524,7 +525,7 @@ module cve2_id_stage #(
   ////////////////
 
 //---------------------------------------------------------------------------------
-  assign illegal_insn_o = instr_valid_i && (illegal_insn_dec || illegal_csr_insn_i || (xif_issue_valid && xif_issue_ready && ~xif_issue_resp_accept));
+  assign illegal_insn_o = instr_valid_i && (illegal_insn_dec || illegal_csr_insn_i || (xif_issue_valid_o && xif_issue_ready_i && ~xif_issue_resp_accept_i));
 //---------------------------------------------------------------------------------
 
   cve2_controller #(
@@ -638,14 +639,14 @@ module cve2_id_stage #(
   assign multdiv_operand_b_ex_o      = rf_rdata_b_fwd;
 
 //---------------------------------------------------------------------------------
-  assign xif_issue_req_instr         = instr_rdata_i;
-  assign xif_register_rs1            = rf_rdata_a_fwd;
-  assign xif_register_rs2            = rf_rdata_b_fwd;
-  assign xif_register_rs3            = rf_rdata_c_fwd; 
+  assign xif_issue_req_instr_o         = instr_rdata_i;
+  assign xif_register_rs1_o            = rf_rdata_a_fwd;
+  assign xif_register_rs2_o            = rf_rdata_b_fwd;
+  assign xif_register_rs3_o            = rf_rdata_c_fwd; 
 
   logic commit_valid_q, commit_valid_d;
-  assign commit_valid_d = xif_issue_valid && xif_issue_ready && xif_issue_resp_accept;
-  always_ff(posedge clk_i or negedge rst_ni) begin
+  assign commit_valid_d = xif_issue_valid_o && xif_issue_ready_i && xif_issue_resp_accept_i;
+  always_ff@(posedge clk_i or negedge rst_ni) begin
     if(~rst_ni) begin
       commit_valid_q <= 1'b0;
     end
@@ -654,9 +655,9 @@ module cve2_id_stage #(
     end
   end
 
-  assign xif_commit_kill = 1'b0;
+  assign xif_commit_kill_o = 1'b0;
   
-  assign xif_result_ready = 1'b1;
+  assign xif_result_ready_o = 1'b1;
 //---------------------------------------------------------------------------------
 
   ////////////////////////
@@ -777,10 +778,11 @@ module cve2_id_stage #(
               stall_alu     = 1'b1;
               id_fsm_d      = MULTI_CYCLE;
               rf_we_raw     = 1'b0;
+            end
 
 //---------------------------------------------------------------------------------
             coproc_instr_valid: begin
-              if (xif_issue_ready && xif_issue_resp_writeback) begin
+              if (xif_issue_ready_i && xif_issue_resp_writeback_i) begin
                 id_fsm_d   = MULTI_CYCLE;
               end
 
@@ -788,7 +790,6 @@ module cve2_id_stage #(
             end
 //---------------------------------------------------------------------------------
 
-            end
             default: begin
               id_fsm_d      = FIRST_CYCLE;
             end
@@ -817,8 +818,8 @@ module cve2_id_stage #(
   end
 
 //---------------------------------------------------------------------------------  
-  assign xif_issue_valid = instr_executing && coproc_instr_valid && (id_fsm_q == FIRST_CYCLE);
-  assign coproc_done     = (xif_issue_valid && xif_issue_ready && ~xif_issue_resp_writeback) || (xif_result_valid && xif_result_we);
+  assign xif_issue_valid_o = instr_executing && coproc_instr_valid && (id_fsm_q == FIRST_CYCLE);
+  assign coproc_done     = (xif_issue_valid_o && xif_issue_ready_i && ~xif_issue_resp_writeback_i) || (xif_result_valid_i && xif_result_we_i);
 //---------------------------------------------------------------------------------
 
   `ASSERT(StallIDIfMulticycle, (id_fsm_q == FIRST_CYCLE) & (id_fsm_d == MULTI_CYCLE) |-> stall_id)
@@ -865,14 +866,14 @@ module cve2_id_stage #(
     assign rf_rdata_b_fwd = rf_rdata_b_i;
 
 //---------------------------------------------------------------------------------
-    assign rf_data_c_fwd  = rf_rdata_c_i;
+    assign rf_rdata_c_fwd  = rf_rdata_c_i;
 //---------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------
     //Since hazard can not occour all the source registers are always valid.
-    assign xif_register_rs_valid[0] = 1'b1;
-    assign xif_register_rs_valid[1] = 1'b1;
-    assign xif_register_rs_valid[2] = 1'b1;
+    assign xif_register_rs_valid_o[0] = 1'b1;
+    assign xif_register_rs_valid_o[1] = 1'b1;
+    assign xif_register_rs_valid_o[2] = 1'b1;
 //--------------------------------------------------------------------------------- 
 
     // Unused Writeback stage only IO & wiring

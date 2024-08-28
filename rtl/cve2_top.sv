@@ -49,6 +49,30 @@ module cve2_top import cve2_pkg::*; #(
   input  logic [31:0]                  data_rdata_i,
   input  logic                         data_err_i,
 
+//---------------------------------------------------------------------------------
+  // CV-X-IF
+  // Issue interface
+  output logic                         xif_issue_valid_o,
+  output logic [31:0]                  xif_issue_req_instr_o,
+  input  logic                         xif_issue_ready_i,
+  input  logic                         xif_issue_resp_accept_i,
+  input  logic                         xif_issue_resp_writeback_i,
+  input  logic [2:0]                   xif_issue_resp_register_read_i,
+  // Register interface
+  output logic [31:0]                  xif_register_rs1_o,
+  output logic [31:0]                  xif_register_rs2_o,
+  output logic [31:0]                  xif_register_rs3_o,
+  output logic [2:0]                   xif_register_rs_valid_o,
+  // Commit interface
+  output logic                         xif_commit_valid_o,
+  output logic                         xif_commit_kill_o,
+  // Result interface
+  output logic                         xif_result_ready_o,
+  input  logic                         xif_result_valid_i,
+  input  logic                         xif_result_we_i,
+  input  logic [31:0]                  xif_result_data_i,
+//---------------------------------------------------------------------------------
+
   // Interrupt inputs
   input  logic                         irq_software_i,
   input  logic                         irq_timer_i,
@@ -186,6 +210,30 @@ module cve2_top import cve2_pkg::*; #(
     .data_wdata_o,
     .data_rdata_i,
     .data_err_i,
+
+//---------------------------------------------------------------------------------
+  // CV-X-IF
+  // Issue interface
+    .xif_issue_valid_o,
+    .xif_issue_req_instr_o,
+    .xif_issue_ready_i,
+    .xif_issue_resp_accept_i,
+    .xif_issue_resp_writeback_i,
+    .xif_issue_resp_register_read_i,
+  // Register interface
+    .xif_register_rs1_o,
+    .xif_register_rs2_o,
+    .xif_register_rs3_o,
+    .xif_register_rs_valid_o,
+  // Commit interface
+    .xif_commit_valid_o,
+    .xif_commit_kill_o,
+  // Result interface
+    .xif_result_ready_o,
+    .xif_result_valid_i,
+    .xif_result_we_i,
+    .xif_result_data_i,
+//---------------------------------------------------------------------------------
 
     .irq_software_i,
     .irq_timer_i,
