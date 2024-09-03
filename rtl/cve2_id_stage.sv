@@ -214,6 +214,11 @@ module cve2_id_stage #(
   logic        stall_multdiv;
   logic        stall_branch;
   logic        stall_jump;
+
+//---------------------------------------------------------------------------------
+  logic       stall_coproc;
+//---------------------------------------------------------------------------------
+
   logic        stall_id;
   logic        flush_id;
   logic        multicycle_done;
@@ -732,6 +737,11 @@ module cve2_id_stage #(
     stall_jump              = 1'b0;
     stall_branch            = 1'b0;
     stall_alu               = 1'b0;
+
+  //---------------------------------------------------------------------------------
+    stall_coproc            = 1'b0;
+  //---------------------------------------------------------------------------------
+
     branch_set_raw_d        = 1'b0;
     jump_set_raw            = 1'b0;
     perf_branch_o           = 1'b0;
@@ -785,7 +795,7 @@ module cve2_id_stage #(
               if (xif_issue_ready_i && xif_issue_resp_writeback_i) begin
                 id_fsm_d   = MULTI_CYCLE;
               end
-
+              stall_coproc = ~xif_issue_ready_i || xif_issue_resp_writeback_i; 
               rf_we_raw    = 1'b0;
             end
 //---------------------------------------------------------------------------------
@@ -819,7 +829,7 @@ module cve2_id_stage #(
 
 //---------------------------------------------------------------------------------  
   assign xif_issue_valid_o = instr_executing && coproc_instr_valid && (id_fsm_q == FIRST_CYCLE);
-  assign coproc_done     = (xif_issue_valid_o && xif_issue_ready_i && ~xif_issue_resp_writeback_i) || (xif_result_valid_i && xif_result_we_i);
+  assign coproc_done       = (xif_issue_valid_o && xif_issue_ready_i && ~xif_issue_resp_writeback_i) || (xif_result_valid_i && xif_result_we_i);
 //---------------------------------------------------------------------------------
 
   `ASSERT(StallIDIfMulticycle, (id_fsm_q == FIRST_CYCLE) & (id_fsm_d == MULTI_CYCLE) |-> stall_id)
@@ -827,8 +837,11 @@ module cve2_id_stage #(
 
   // Stall ID/EX stage for reason that relates to instruction in ID/EX, update assertion below if
   // modifying this.
+
+//---------------------------------------------------------------------------------
   assign stall_id = stall_mem | stall_multdiv | stall_jump | stall_branch |
-                      stall_alu;
+                      stall_alu | stall_coproc;
+//---------------------------------------------------------------------------------
 
   // Generally illegal instructions have no reason to stall, however they must still stall waiting
   // for outstanding memory requests so exceptions related to them take priority over the illegal
