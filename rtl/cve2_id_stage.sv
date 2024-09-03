@@ -660,6 +660,8 @@ module cve2_id_stage #(
     end
   end
 
+  assign xif_commit_valid_o = commit_valid_q;
+
   assign xif_commit_kill_o = 1'b0;
   
   assign xif_result_ready_o = 1'b1;
@@ -739,6 +741,7 @@ module cve2_id_stage #(
     stall_alu               = 1'b0;
 
   //---------------------------------------------------------------------------------
+    //xif_commit_valid_o      = 1'b0;
     stall_coproc            = 1'b0;
   //---------------------------------------------------------------------------------
 
@@ -793,7 +796,8 @@ module cve2_id_stage #(
 //---------------------------------------------------------------------------------
             coproc_instr_valid: begin
               if (xif_issue_ready_i && xif_issue_resp_writeback_i) begin
-                id_fsm_d   = MULTI_CYCLE;
+                id_fsm_d           = MULTI_CYCLE;
+                //xif_commit_valid_o = 1'b1;
               end
               stall_coproc = ~xif_issue_ready_i || xif_issue_resp_writeback_i; 
               rf_we_raw    = 1'b0;
@@ -817,6 +821,11 @@ module cve2_id_stage #(
             stall_multdiv   = multdiv_en_dec;
             stall_branch    = branch_in_dec;
             stall_jump      = jump_in_dec;
+
+//---------------------------------------------------------------------------------
+            stall_coproc    = coproc_instr_valid;
+//---------------------------------------------------------------------------------
+
           end
         end
 
@@ -858,7 +867,8 @@ module cve2_id_stage #(
   // Used by ALU to access RS3 if ternary instruction.
   assign instr_first_cycle_id_o = instr_first_cycle;
 
-    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : ex_valid_i;
+    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i :
+                             (coproc_instr_valid ? coproc_done : ex_valid_i);
 
     assign data_req_allowed = instr_first_cycle;
 
@@ -932,7 +942,8 @@ module cve2_id_stage #(
       OP_A_IMM})
   `ASSERT(IbexRegfileWdataSelValid, instr_valid_i |-> rf_wdata_sel inside {
       RF_WD_EX,
-      RF_WD_CSR})
+      RF_WD_CSR, 
+      RF_WD_COPROC})
   `ASSERT_KNOWN(IbexWbStateKnown, id_fsm_q)
 
   // Branch decision must be valid when jumping.
