@@ -56,6 +56,7 @@ module cve2_register_file_ff #(
   logic [NUM_WORDS-1:1]                we_a_dec;
 
 //---------------------------------------------------------------------------------
+  logic [NUM_WORDS-1:1]                we_b_dec;
   always_comb begin : we_decoder
     for (int unsigned i = 1; i < NUM_WORDS; i++) begin
       we_a_dec[i] = (waddr_a_i == 5'(i)) ? we_a_i : 1'b0;

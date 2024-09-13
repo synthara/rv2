@@ -48,11 +48,11 @@ module cve2_wb #(
   // 1st register file write port outputs.
   output logic [4:0]               rf_waddr_a_wb_o,
   output logic [31:0]              rf_wdata_a_wb_o,
-  output logic                     rf_we_wb_a_o,
+  output logic                     rf_we_a_wb_o,
   //2nd register file write port outputs.
   output logic [4:0]               rf_waddr_b_wb_o,
-  output logic [31:0]              rf_wdata_wb_b_o,
-  output logic                     rf_we_wb_b_o,
+  output logic [31:0]              rf_wdata_b_wb_o,
+  output logic                     rf_we_b_wb_o,
 //---------------------------------------------------------------------------------
 
 
@@ -90,8 +90,8 @@ module cve2_wb #(
 
 //---------------------------------------------------------------------------------
   assign rf_waddr_b_wb_o = rf_waddr_b_id_i;
-  assign rf_wdata_wb_b_o = rf_wdata_b_id_i;
-  assign rf_we_wb_b_o    = rf_we_b_i;
+  assign rf_wdata_b_wb_o = rf_wdata_b_id_i;
+  assign rf_we_b_wb_o    = rf_we_b_id_i;
 //---------------------------------------------------------------------------------
 
 

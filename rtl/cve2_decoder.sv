@@ -791,9 +791,9 @@ module cve2_decoder #(
             data_we_o          = 1'b1;  // Enable write to memory.
             lsu_addr_mux_sel_o = 1'b1;  // Select rs1 to address the memory.
             rf_we_b            = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
-          end
+    
             // Store size.
-            unique case (instr_rdata_i[13:12])
+            unique case (instr[13:12])
               2'b00: begin
                  data_type_o = 2'b10; // sb
               end
@@ -813,6 +813,7 @@ module cve2_decoder #(
                 illegal_insn       = 1'b1;
               end
             endcase
+          end
 
           3'b011: begin
             unique case (instr_rdata_i[31:25])

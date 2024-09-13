@@ -730,7 +730,7 @@ module cve2_core import cve2_pkg::*; #(
 
 //---------------------------------------------------------------------------------
     .rf_waddr_a_id_i(rf_waddr_a_id),
-    .rf_wdata_a_id_i(rf_waddr_a_o),
+    .rf_wdata_a_id_i(rf_wdata_a_id),
     .rf_waddr_a_id_i(rf_we_a_id),
     .rf_waddr_b_id_i(rf_waddr_b_id),
     .rf_wdata_b_id_i(rf_wdata_b_id),
@@ -826,7 +826,7 @@ module cve2_core import cve2_pkg::*; #(
     //2nd register file write port signals.
     .waddr_a_i(rf_waddr_b_wb),
     .wdata_a_i(rf_wdata_b_wb),
-    .we_a_i   (rf_we_b_wb),
+    .we_a_i   (rf_we_b_wb)
 //---------------------------------------------------------------------------------
 
   );
