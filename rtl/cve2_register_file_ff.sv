@@ -37,7 +37,14 @@ module cve2_register_file_ff #(
   // Write port W1
   input  logic [4:0]           waddr_a_i,
   input  logic [DataWidth-1:0] wdata_a_i,
-  input  logic                 we_a_i
+  input  logic                 we_a_i,
+
+//---------------------------------------------------------------------------------
+  // Write port W2
+  input  logic [4:0]           waddr_b_i,
+  input  logic [DataWidth-1:0] wdata_b_i,
+  input  logic                 we_b_i
+//---------------------------------------------------------------------------------
 
 );
 
@@ -48,9 +55,11 @@ module cve2_register_file_ff #(
   logic [NUM_WORDS-1:1][DataWidth-1:0] rf_reg_q;
   logic [NUM_WORDS-1:1]                we_a_dec;
 
-  always_comb begin : we_a_decoder
+//---------------------------------------------------------------------------------
+  always_comb begin : we_decoder
     for (int unsigned i = 1; i < NUM_WORDS; i++) begin
       we_a_dec[i] = (waddr_a_i == 5'(i)) ? we_a_i : 1'b0;
+      we_b_dec[i] = (waddr_b_i == 5'(i)) ? we_b_i : 1'b0;
     end
   end
 
@@ -59,11 +68,19 @@ module cve2_register_file_ff #(
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
         rf_reg_q[i] <= WordZeroVal;
-      end else if (we_a_dec[i]) begin
-        rf_reg_q[i] <= wdata_a_i;
+      end else begin
+        if (we_a_dec[i]) begin
+          rf_reg_q[i] <= wdata_a_i;
+        end
+        else begin
+          if (we_b_dec[i]) begin
+            rf_reg_q[i] <= wdata_b_i;
+          end 
+        end
       end
     end
   end
+//---------------------------------------------------------------------------------
 
   // R0 is nil
   assign rf_reg[0] = WordZeroVal;

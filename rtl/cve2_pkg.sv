@@ -242,11 +242,22 @@ package cve2_pkg;
     IMM_A_ZERO
   } imm_a_sel_e;
 
+//---------------------------------------------------------------------------------
   // Operand b selection
-  typedef enum logic {
+  typedef enum logic[2:0] {
     OP_B_REG_B,
-    OP_B_IMM
+    OP_B_IMM,
+    OP_B_REG_C
   } op_b_sel_e;
+
+  // Operand c selection
+  typedef enum logic {
+    OP_C_REG_C,
+    OP_C_MEM,
+  } op_c_sel_e;
+//---------------------------------------------------------------------------------
+
+
 
   // Immediate b selection
   typedef enum logic [2:0] {
@@ -259,16 +270,16 @@ package cve2_pkg;
     IMM_B_INCR_ADDR
   } imm_b_sel_e;
 
+
+
+//---------------------------------------------------------------------------------
   // Regfile write data selection
   typedef enum logic[2:0] {
     RF_WD_EX,
     RF_WD_CSR,
-
-//---------------------------------------------------------------------------------
     RF_WD_COPROC
-//----------------------------------------------------------------------------------
-
   } rf_wd_sel_e;
+//---------------------------------------------------------------------------------
 
   //////////////
   // IF stage //

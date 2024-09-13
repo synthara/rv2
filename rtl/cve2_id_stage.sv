@@ -64,6 +64,14 @@ module cve2_id_stage #(
   output logic [31:0]               alu_operand_a_ex_o,
   output logic [31:0]               alu_operand_b_ex_o,
 
+
+
+//---------------------------------------------------------------------------------
+  output logic [31:0]               alu_operand_c_ex_o,
+//---------------------------------------------------------------------------------
+
+
+
   // Multicycle Operation Stage Register
   input  logic [1:0]                imd_val_we_ex_i,
   input  logic [33:0]               imd_val_d_ex_i[2],
@@ -100,32 +108,44 @@ module cve2_id_stage #(
   output logic                      lsu_sign_ext_o,
   output logic [31:0]               lsu_wdata_o,
 
+
+
+//---------------------------------------------------------------------------------
+  output logic                      lsu_addr_mux_sel_o,
+//---------------------------------------------------------------------------------
+
+
+
   input  logic                      lsu_addr_incr_req_i,
   input  logic [31:0]               lsu_addr_last_i,
+
+
 
 //---------------------------------------------------------------------------------
   // CV-X-IF
   // Issue interface
-  output logic                         xif_issue_valid_o,
-  output logic [31:0]                  xif_issue_req_instr_o,
-  input  logic                         xif_issue_ready_i,
-  input  logic                         xif_issue_resp_accept_i,
-  input  logic                         xif_issue_resp_writeback_i,
-  input  logic [2:0]                   xif_issue_resp_register_read_i,
+  output logic                      xif_issue_valid_o,
+  output logic [31:0]               xif_issue_req_instr_o,
+  input  logic                      xif_issue_ready_i,
+  input  logic                      xif_issue_resp_accept_i,
+  input  logic                      xif_issue_resp_writeback_i,
+  input  logic [2:0]                xif_issue_resp_register_read_i,
   // Register interface
-  output logic [31:0]                  xif_register_rs1_o,
-  output logic [31:0]                  xif_register_rs2_o,
-  output logic [31:0]                  xif_register_rs3_o,
-  output logic [2:0]                   xif_register_rs_valid_o,
+  output logic [31:0]               xif_register_rs1_o,
+  output logic [31:0]               xif_register_rs2_o,
+  output logic [31:0]               xif_register_rs3_o,
+  output logic [2:0]                xif_register_rs_valid_o,
   // Commit interface
-  output logic                         xif_commit_valid_o,
-  output logic                         xif_commit_kill_o,
+  output logic                      xif_commit_valid_o,
+  output logic                      xif_commit_kill_o,
   // Result interface
-  output logic                         xif_result_ready_o,
-  input  logic                         xif_result_valid_i,
-  input  logic                         xif_result_we_i,
-  input  logic [31:0]                  xif_result_data_i,
+  output logic                      xif_result_ready_o,
+  input  logic                      xif_result_valid_i,
+  input  logic                      xif_result_we_i,
+  input  logic [31:0]               xif_result_data_i,
 //---------------------------------------------------------------------------------
+
+
 
   // Interrupt signals
   input  logic                      csr_mstatus_mie_i,
@@ -157,22 +177,39 @@ module cve2_id_stage #(
   output logic [4:0]                rf_raddr_b_o,
   input  logic [31:0]               rf_rdata_b_i,
 
+
+
 //---------------------------------------------------------------------------------
   output logic [4:0]                rf_raddr_c_o,
   input  logic [31:0]               rf_rdata_c_i,
 //---------------------------------------------------------------------------------
 
+
+
   output logic                      rf_ren_a_o,
   output logic                      rf_ren_b_o,
+
+
 
 //---------------------------------------------------------------------------------
   output logic                      rf_ren_c_o,
 //---------------------------------------------------------------------------------
 
+
+
+//---------------------------------------------------------------------------------
   // Register file write (via writeback)
-  output logic [4:0]                rf_waddr_id_o,
-  output logic [31:0]               rf_wdata_id_o,
-  output logic                      rf_we_id_o,
+  //1st port.
+  output logic [4:0]                rf_waddr_a_id_o,
+  output logic [31:0]               rf_wdata_a_id_o,
+  output logic                      rf_we_a_id_o,
+  //2st port.
+  output logic [4:0]                rf_waddr_b_id_o,
+  output logic [31:0]               rf_wdata_b_id_o,
+  output logic                      rf_we_b_id_o,
+//---------------------------------------------------------------------------------
+
+
 
   output  logic                     en_wb_o,
   output  logic                     instr_perf_count_id_o,
@@ -215,9 +252,13 @@ module cve2_id_stage #(
   logic        stall_branch;
   logic        stall_jump;
 
+
+
 //---------------------------------------------------------------------------------
   logic       stall_coproc;
 //---------------------------------------------------------------------------------
+
+
 
   logic        stall_id;
   logic        flush_id;
@@ -237,45 +278,83 @@ module cve2_id_stage #(
   // Register file interface
 
   rf_wd_sel_e  rf_wdata_sel;
-  logic        rf_we_dec, rf_we_raw;
+  logic        rf_we_a_dec, rf_we_a_raw;
+
+
+
+//---------------------------------------------------------------------------------
+  logic        rf_we_b_dec;
+//---------------------------------------------------------------------------------
+
+
+
   logic        rf_ren_a, rf_ren_b;
+
+
 
 //---------------------------------------------------------------------------------
   logic        rf_ren_c;
 //---------------------------------------------------------------------------------
 
+
+
   logic        rf_ren_a_dec, rf_ren_b_dec;
+
+
 
 //---------------------------------------------------------------------------------
   logic        rf_ren_c_dec;
 //---------------------------------------------------------------------------------
 
+
+
   // Read enables should only be asserted for valid and legal instructions
   assign rf_ren_a = instr_valid_i & ~instr_fetch_err_i & ~illegal_insn_o & rf_ren_a_dec;
   assign rf_ren_b = instr_valid_i & ~instr_fetch_err_i & ~illegal_insn_o & rf_ren_b_dec;
+
+
 
 //---------------------------------------------------------------------------------
   assign rf_ren_c = instr_valid_i & ~instr_fetch_err_i & ~illegal_insn_o & rf_ren_c_dec;
 //---------------------------------------------------------------------------------
 
+
+
   assign rf_ren_a_o = rf_ren_a;
   assign rf_ren_b_o = rf_ren_b;
+
+
 
 //---------------------------------------------------------------------------------
   assign rf_ren_c_o = rf_ren_c;
 //---------------------------------------------------------------------------------
 
+
+
   logic [31:0] rf_rdata_a_fwd;
   logic [31:0] rf_rdata_b_fwd;
+
+
 
 //---------------------------------------------------------------------------------
   logic [31:0] rf_rdata_c_fwd;
 //---------------------------------------------------------------------------------
 
+
+
   // ALU Control
   alu_op_e     alu_operator;
   op_a_sel_e   alu_op_a_mux_sel, alu_op_a_mux_sel_dec;
   op_b_sel_e   alu_op_b_mux_sel, alu_op_b_mux_sel_dec;
+
+
+
+//---------------------------------------------------------------------------------
+  op_b_sel_c   alu_op_c_mux_sel;
+//---------------------------------------------------------------------------------
+
+
+
   logic        alu_multicycle_dec;
   logic        stall_alu;
 
@@ -301,13 +380,25 @@ module cve2_id_stage #(
   // CSR control
   logic        csr_pipe_flush;
 
+
+
 //---------------------------------------------------------------------------------
  logic        coproc_instr_valid;
  logic        coproc_done;
 //---------------------------------------------------------------------------------
 
+
+
   logic [31:0] alu_operand_a;
   logic [31:0] alu_operand_b;
+
+
+
+//---------------------------------------------------------------------------------
+  logic [31:0] alu_operand_c;
+//---------------------------------------------------------------------------------
+
+
 
   /////////////
   // LSU Mux //
@@ -361,8 +452,31 @@ module cve2_id_stage #(
       IMM_B_INCR_PC,
       IMM_B_INCR_ADDR})
 
-  // ALU MUX for Operand B
-  assign alu_operand_b = (alu_op_b_mux_sel == OP_B_IMM) ? imm_b : rf_rdata_b_fwd;
+
+
+//---------------------------------------------------------------------------------
+  // Operand C MUX: needed for Register-Register Stores with Post-Increment and Register-Register Stores.
+  // The adder needs rs1 and rs3 as inputs to calculate the incremented address (Register-Register Stores with Post-Increment: rs1+=rs3) 
+  // or to calculate the actual adress (Register-Register Stores: Mem(rs1+rs3)). Therefore, rs3 is routed by means of the MUX for Operand B 
+  // to the second input of the adder whereas the data to be stored pass through ALU Operand C.
+
+  always_comb begin : alu_operand_b_mux
+    unique case (alu_op_b_mux_sel)
+      OP_B_REG_B: alu_operand_b = rf_rdata_b_fwd;
+      OP_B_IMM:   alu_operand_b = imm_b;
+      OP_B_REG_C: alu_operand_b = rf_rdata_c_fwd;
+    endcase
+  end
+
+  always_comb begin : alu_operand_c_mux
+    unique case (alu_op_c_mux_sel)
+      OP_C_REG_C:  alu_operand_c = rf_rdata_c_fwd;
+      OP_C_REG_B:  alu_operand_c = rf_rdata_b_fwd;
+    endcase
+  end
+//---------------------------------------------------------------------------------
+
+
 
   /////////////////////////////////////////
   // Multicycle Operation Stage Register //
@@ -385,20 +499,33 @@ module cve2_id_stage #(
   ///////////////////////
 
   // Suppress register write if there is an illegal CSR access or instruction is not executing
-  assign rf_we_id_o = rf_we_raw & instr_executing & ~illegal_csr_insn_i;
+  assign rf_we_a_id_o = rf_we_a_raw & instr_executing & ~illegal_csr_insn_i;
 
-  // Register file write data mux
+
+
+//---------------------------------------------------------------------------------
+  //The 2nd register file write port is not involved in CSR operations.
+  assign rf_we_b_id_o =  rf_we_b_dec & instr_executing;
+//---------------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------------
+  // 1st register file write port data mux.
   always_comb begin : rf_wdata_id_mux
     unique case (rf_wdata_sel)
-      RF_WD_EX:  rf_wdata_id_o = result_ex_i;
-      RF_WD_CSR: rf_wdata_id_o = csr_rdata_i;
-
-//---------------------------------------------------------------------------------
-      RF_WD_COPROC: rf_wdata_id_o = xif_result_data_i;
-//---------------------------------------------------------------------------------
-      default:   rf_wdata_id_o = result_ex_i;
+      RF_WD_EX:     rf_wdata_a_id_o = result_ex_i;
+      RF_WD_CSR:    rf_wdata_a_id_o = csr_rdata_i;
+      RF_WD_COPROC: rf_wdata_a_id_o = xif_result_data_i;
+      default:      rf_wdata_a_id_o = result_ex_i;
     endcase
   end
+
+  // 2nd register file write port data.
+  assign rf_wdata_b_id_o = result_ex_i;
+//---------------------------------------------------------------------------------
+
+
 
   /////////////
   // Decoder //
@@ -412,7 +539,6 @@ module cve2_id_stage #(
   ) decoder_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
-
     // controller
     .illegal_insn_o(illegal_insn_dec),
     .ebrk_insn_o   (ebrk_insn),
@@ -441,27 +567,58 @@ module cve2_id_stage #(
 
     // register file
     .rf_wdata_sel_o(rf_wdata_sel),
-    .rf_we_o       (rf_we_dec),
+    .rf_we_a_o     (rf_we_a_dec),
+
+
+
+//---------------------------------------------------------------------------------
+    .rf_we_b_o(rf_we_b_dec),
+//---------------------------------------------------------------------------------
+
+
 
     .rf_raddr_a_o(rf_raddr_a_o),
     .rf_raddr_b_o(rf_raddr_b_o),
+
+
 
 //---------------------------------------------------------------------------------
     .rf_raddr_c_o(rf_raddr_c_o),
 //---------------------------------------------------------------------------------
 
-    .rf_waddr_o  (rf_waddr_id_o),
+
+
+//---------------------------------------------------------------------------------
+    .rf_waddr_a_o(rf_waddr_a_id_o),
+    .rf_waddr_b_o(rf_waddr_b_id_o),
+//---------------------------------------------------------------------------------
+
+
+
     .rf_ren_a_o  (rf_ren_a_dec),
     .rf_ren_b_o  (rf_ren_b_dec),
+
+
 
 //---------------------------------------------------------------------------------
     .rf_ren_c_o  (rf_ren_c_dec),
 //---------------------------------------------------------------------------------
 
+
+
     // ALU
     .alu_operator_o    (alu_operator),
     .alu_op_a_mux_sel_o(alu_op_a_mux_sel_dec),
+
+
+
+//---------------------------------------------------------------------------------
     .alu_op_b_mux_sel_o(alu_op_b_mux_sel_dec),
+    .alu_op_c_mux_sel_o(alu_op_c_mux_sel),    
+//---------------------------------------------------------------------------------
+
+
+
     .alu_multicycle_o  (alu_multicycle_dec),
 
     // MULT & DIV
@@ -482,12 +639,22 @@ module cve2_id_stage #(
     .data_type_o          (lsu_type),
     .data_sign_extension_o(lsu_sign_ext),
 
+
+
+//---------------------------------------------------------------------------------
+    .lsu_addr_mux_sel_o(lsu_addr_mux_sel_o), 
+//---------------------------------------------------------------------------------
+
+
+
 //---------------------------------------------------------------------------------
     // Coprocessor
     .xif_issue_resp_register_read_i(xif_issue_resp_register_read_i),
     .xif_issue_resp_writeback_i(xif_issue_resp_writeback_i),
     .coproc_instr_valid_o(coproc_instr_valid),
 //---------------------------------------------------------------------------------
+
+
 
     // jump/branches
     .jump_in_dec_o  (jump_in_dec),
@@ -635,6 +802,10 @@ module cve2_id_stage #(
   assign alu_operand_a_ex_o          = alu_operand_a;
   assign alu_operand_b_ex_o          = alu_operand_b;
 
+//---------------------------------------------------------------------------------
+  assign alu_operand_c_ex_o          = alu_operand_c;
+//---------------------------------------------------------------------------------
+
   assign mult_en_ex_o                = mult_en_id;
   assign div_en_ex_o                 = div_en_id;
 
@@ -644,10 +815,10 @@ module cve2_id_stage #(
   assign multdiv_operand_b_ex_o      = rf_rdata_b_fwd;
 
 //---------------------------------------------------------------------------------
-  assign xif_issue_req_instr_o         = instr_rdata_i;
-  assign xif_register_rs1_o            = rf_rdata_a_fwd;
-  assign xif_register_rs2_o            = rf_rdata_b_fwd;
-  assign xif_register_rs3_o            = rf_rdata_c_fwd; 
+  assign xif_issue_req_instr_o       = instr_rdata_i;
+  assign xif_register_rs1_o          = rf_rdata_a_fwd;
+  assign xif_register_rs2_o          = rf_rdata_b_fwd;
+  assign xif_register_rs3_o          = rf_rdata_c_fwd; 
 
   logic commit_valid_q, commit_valid_d;
   assign commit_valid_d = xif_issue_valid_o && xif_issue_ready_i && xif_issue_resp_accept_i;
@@ -734,14 +905,14 @@ module cve2_id_stage #(
 
   always_comb begin
     id_fsm_d                = id_fsm_q;
-    rf_we_raw               = rf_we_dec;
+    rf_we_a_raw             = rf_we_a_dec;
     stall_multdiv           = 1'b0;
     stall_jump              = 1'b0;
     stall_branch            = 1'b0;
     stall_alu               = 1'b0;
 
   //---------------------------------------------------------------------------------
-    //xif_commit_valid_o      = 1'b0;
+    //xif_commit_valid_o    = 1'b0;
     stall_coproc            = 1'b0;
   //---------------------------------------------------------------------------------
 
@@ -765,7 +936,7 @@ module cve2_id_stage #(
                 // When single-cycle multiply is configured mul can finish in the first cycle so
                 // only enter MULTI_CYCLE state if a result isn't immediately available
                 id_fsm_d      = MULTI_CYCLE;
-                rf_we_raw     = 1'b0;
+                rf_we_a_raw   = 1'b0;
                 stall_multdiv = 1'b1;
               end
             end
@@ -790,17 +961,17 @@ module cve2_id_stage #(
             alu_multicycle_dec: begin
               stall_alu     = 1'b1;
               id_fsm_d      = MULTI_CYCLE;
-              rf_we_raw     = 1'b0;
+              rf_we_a_raw   = 1'b0;
             end
 
 //---------------------------------------------------------------------------------
             coproc_instr_valid: begin
               if (xif_issue_ready_i && xif_issue_resp_writeback_i) begin
-                id_fsm_d           = MULTI_CYCLE;
+                id_fsm_d             = MULTI_CYCLE;
                 //xif_commit_valid_o = 1'b1;
               end
               stall_coproc = ~xif_issue_ready_i || xif_issue_resp_writeback_i; 
-              rf_we_raw    = 1'b0;
+              rf_we_a_raw  = 1'b0;
             end
 //---------------------------------------------------------------------------------
 
@@ -812,7 +983,7 @@ module cve2_id_stage #(
 
         MULTI_CYCLE: begin
           if(multdiv_en_dec) begin
-            rf_we_raw       = rf_we_dec & ex_valid_i;
+            rf_we_a_raw       = rf_we_a_dec & ex_valid_i;
           end
 
           if (multicycle_done) begin

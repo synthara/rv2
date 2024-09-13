@@ -19,26 +19,26 @@ module cve2_decoder #(
   parameter cve2_pkg::rv32b_e RV32B  = cve2_pkg::RV32BNone,
   parameter bit [31:0] COPROC_OPCODE = '0
 ) (
-  input  logic                 clk_i,
-  input  logic                 rst_ni,
+  input  logic                  clk_i,
+  input  logic                  rst_ni,
 
   // to/from controller
-  output logic                 illegal_insn_o,        // illegal instr encountered
-  output logic                 ebrk_insn_o,           // trap instr encountered
-  output logic                 mret_insn_o,           // return from exception instr
+  output logic                  illegal_insn_o,        // illegal instr encountered
+  output logic                  ebrk_insn_o,           // trap instr encountered
+  output logic                  mret_insn_o,           // return from exception instr
                                                       // encountered
-  output logic                 dret_insn_o,           // return from debug instr encountered
-  output logic                 ecall_insn_o,          // syscall instr encountered
-  output logic                 wfi_insn_o,            // wait for interrupt instr encountered
-  output logic                 jump_set_o,            // jump taken set signal
+  output logic                  dret_insn_o,           // return from debug instr encountered
+  output logic                  ecall_insn_o,          // syscall instr encountered
+  output logic                  wfi_insn_o,            // wait for interrupt instr encountered
+  output logic                  jump_set_o,            // jump taken set signal
 
   // from IF-ID pipeline register
-  input  logic                 instr_first_cycle_i,   // instruction read is in its first cycle
-  input  logic [31:0]          instr_rdata_i,         // instruction read from memory/cache
-  input  logic [31:0]          instr_rdata_alu_i,     // instruction read from memory/cache
+  input  logic                  instr_first_cycle_i,   // instruction read is in its first cycle
+  input  logic [31:0]           instr_rdata_i,         // instruction read from memory/cache
+  input  logic [31:0]           instr_rdata_alu_i,     // instruction read from memory/cache
                                                       // replicated to ease fan-out)
 
-  input  logic                 illegal_c_insn_i,      // compressed instruction decode failed
+  input  logic                  illegal_c_insn_i,      // compressed instruction decode failed
 
   // immediates
   output cve2_pkg::imm_a_sel_e  imm_a_mux_sel_o,       // immediate selection for operand a
@@ -52,28 +52,59 @@ module cve2_decoder #(
 
   // register file
   output cve2_pkg::rf_wd_sel_e rf_wdata_sel_o,   // RF write data selection
-  output logic                 rf_we_o,          // write enable for regfile
+
+  output logic                 rf_we_a_o,          // write enable for regfile
+
+
+  
+//---------------------------------------------------------------------------------
+  output logic                 rf_we_b_o, // 2nd register file write port enable signal.
+//---------------------------------------------------------------------------------
+
+
+
   output logic [4:0]           rf_raddr_a_o,
   output logic [4:0]           rf_raddr_b_o,
 
+
+
 //---------------------------------------------------------------------------------
-  output logic [4:0]           rf_raddr_c_o,
+  output logic [4:0]           rf_raddr_c_o, // 3rd register file read address.
 //---------------------------------------------------------------------------------
 
-  output logic [4:0]           rf_waddr_o,
+
+
+//---------------------------------------------------------------------------------
+  output logic [4:0]           rf_waddr_a_o,
+  output logic [4:0]           rf_waddr_b_o,
+//---------------------------------------------------------------------------------
+
+
+
   output logic                 rf_ren_a_o,          // Instruction reads from RF addr A
   output logic                 rf_ren_b_o,          // Instruction reads from RF addr B
 
+
+
 //---------------------------------------------------------------------------------
-  output logic                 rf_ren_c_o,
+  output logic                 rf_ren_c_o, // Instruction reads from RF addr C
 //---------------------------------------------------------------------------------
+
+
 
   // ALU
   output cve2_pkg::alu_op_e    alu_operator_o,        // ALU operation selection
   output cve2_pkg::op_a_sel_e  alu_op_a_mux_sel_o,    // operand a selection: reg value, PC,
                                                       // immediate or zero
-  output cve2_pkg::op_b_sel_e  alu_op_b_mux_sel_o,    // operand b selection: reg value or
-                                                      // immediate
+
+
+//---------------------------------------------------------------------------------
+  output cve2_pkg::op_b_sel_e  alu_op_b_mux_sel_o,    // Operand B selection: rs2 value, immediate or rs3 value
+  output cve2_pkg::op_c_sel_e  alu_op_c_mux_sel_o,    // Operand C selection: rs3 value or rs2 value (added for Post-Increment Load&Store Instructions)
+//---------------------------------------------------------------------------------
+                                                    
+
+
   output logic                 alu_multicycle_o,      // ternary bitmanip instruction
 
   // MULT & DIV
@@ -97,12 +128,21 @@ module cve2_decoder #(
   output logic                 data_sign_extension_o, // sign extension for data read from
                                                       // memory
 
+
 //---------------------------------------------------------------------------------
-  // Coprocessor
+  output logic                 lsu_addr_mux_sel_o, //This signal indicates if the memory address is the one calulated in the ALU or rs1.
+//---------------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------------
+  // Coprocessor.
   input  logic[2:0]            xif_issue_resp_register_read_i,
   input  logic                 xif_issue_resp_writeback_i,
   output logic                 coproc_instr_valid_o,
 //---------------------------------------------------------------------------------                                                      
+
+
 
   // jump/branches
   output logic                 jump_in_dec_o,         // jump is being calculated in ALU
@@ -114,7 +154,17 @@ module cve2_decoder #(
   logic        illegal_insn;
   logic        illegal_reg_rv32e;
   logic        csr_illegal;
-  logic        rf_we;
+
+  logic        rf_we_a;
+
+
+
+//---------------------------------------------------------------------------------
+  //2nd register file write port enable signal.
+  logic        rf_we_b;
+//---------------------------------------------------------------------------------
+
+
 
   logic [31:0] instr;
   logic [31:0] instr_alu;
@@ -181,13 +231,26 @@ module cve2_decoder #(
   assign rf_raddr_a_o = (use_rs3_q & ~instr_first_cycle_i) ? instr_rs3 : instr_rs1; // rs3 / rs1
   assign rf_raddr_b_o = instr_rs2; // rs2
 
+
+
 //---------------------------------------------------------------------------------
   assign rf_raddr_c_o = instr_rs3;
 //---------------------------------------------------------------------------------
 
+
+
   // destination register
   assign instr_rd = instr[11:7];
-  assign rf_waddr_o   = instr_rd; // rd
+  assign rf_waddr_a_o   = instr_rd; // rd
+
+
+
+//---------------------------------------------------------------------------------
+  assign rf_waddr_b_o = instr_rs1; // The second register file write port is used only for Post-Increment Load&Store Instructions.
+                                   // The incremented address is always stored in rs1.
+//---------------------------------------------------------------------------------
+
+
 
   ////////////////////
   // Register check //
@@ -195,7 +258,8 @@ module cve2_decoder #(
   if (RV32E) begin : gen_rv32e_reg_check_active
     assign illegal_reg_rv32e = ((rf_raddr_a_o[4] & (alu_op_a_mux_sel_o == OP_A_REG_A)) |
                                 (rf_raddr_b_o[4] & (alu_op_b_mux_sel_o == OP_B_REG_B)) |
-                                (rf_waddr_o[4]   & rf_we));
+                                (rf_waddr_a_o[4]   & rf_we_a) |
+                                (rf_waddr_b_o[4]   & rf_we_b));
   end else begin : gen_rv32e_reg_check_inactive
     assign illegal_reg_rv32e = 1'b0;
   end
@@ -227,13 +291,26 @@ module cve2_decoder #(
     multdiv_signed_mode_o = 2'b00;
 
     rf_wdata_sel_o        = RF_WD_EX;
-    rf_we                 = 1'b0;
+    rf_we_a               = 1'b0;
+
+
+
+//---------------------------------------------------------------------------------
+    rf_we_b               = 1'b0;
+//---------------------------------------------------------------------------------
+
+
+
     rf_ren_a_o            = 1'b0;
     rf_ren_b_o            = 1'b0;
+
+
 
 //---------------------------------------------------------------------------------
     rf_ren_c_o            = 1'b0;
 //---------------------------------------------------------------------------------
+
+
 
     csr_access_o          = 1'b0;
     csr_illegal           = 1'b0;
@@ -244,9 +321,19 @@ module cve2_decoder #(
     data_sign_extension_o = 1'b0;
     data_req_o            = 1'b0;
 
+
+
+//---------------------------------------------------------------------------------
+    lsu_addr_mux_sel_o    = 1'b0;
+//---------------------------------------------------------------------------------
+
+
+
 //---------------------------------------------------------------------------------
     coproc_instr_valid_o  = 1'b0;
 //---------------------------------------------------------------------------------
+
+
 
     illegal_insn          = 1'b0;
     ebrk_insn_o           = 1'b0;
@@ -268,11 +355,11 @@ module cve2_decoder #(
 
         if (instr_first_cycle_i) begin
           // Calculate jump target (and store PC)
-          rf_we            = 1'b0;
+          rf_we_a          = 1'b0;
           jump_set_o       = 1'b1;
         end else begin
           // Calculate and store PC+4
-          rf_we            = 1'b1;
+          rf_we_a          = 1'b1;
         end
       end
 
@@ -281,11 +368,11 @@ module cve2_decoder #(
 
         if (instr_first_cycle_i) begin
           // Calculate jump target (and store PC)
-          rf_we            = 1'b0;
+          rf_we_a            = 1'b0;
           jump_set_o       = 1'b1;
         end else begin
           // Calculate and store PC+4
-          rf_we            = 1'b1;
+          rf_we_a            = 1'b1;
         end
         if (instr[14:12] != 3'b0) begin
           illegal_insn = 1'b1;
@@ -363,16 +450,16 @@ module cve2_decoder #(
       /////////
 
       OPCODE_LUI: begin  // Load Upper Immediate
-        rf_we            = 1'b1;
+        rf_we_a            = 1'b1;
       end
 
       OPCODE_AUIPC: begin  // Add Upper Immediate to PC
-        rf_we            = 1'b1;
+        rf_we_a            = 1'b1;
       end
 
       OPCODE_OP_IMM: begin // Register-Immediate ALU Operations
-        rf_ren_a_o       = 1'b1;
-        rf_we            = 1'b1;
+        rf_ren_a_o         = 1'b1;
+        rf_we_a            = 1'b1;
 
         unique case (instr[14:12])
           3'b000,
@@ -472,7 +559,7 @@ module cve2_decoder #(
       OPCODE_OP: begin  // Register-Register ALU operation
         rf_ren_a_o      = 1'b1;
         rf_ren_b_o      = 1'b1;
-        rf_we           = 1'b1;
+        rf_we_a           = 1'b1;
         if ({instr[26], instr[13:12]} == {1'b1, 2'b01}) begin
           illegal_insn = (RV32B != RV32BNone) ? 1'b0 : 1'b1; // cmix / cmov / fsl / fsr
         end else begin
@@ -589,7 +676,7 @@ module cve2_decoder #(
         unique case (instr[14:12])
           3'b000: begin
             // FENCE is treated as a NOP since all memory operations are already strictly ordered.
-            rf_we           = 1'b0;
+            rf_we_a           = 1'b0;
           end
           3'b001: begin
             // FENCE.I is implemented as a jump to the next PC, this gives the required flushing
@@ -597,7 +684,7 @@ module cve2_decoder #(
             // requests will be ignored).
             jump_in_dec_o   = 1'b1;
 
-            rf_we           = 1'b0;
+            rf_we_a           = 1'b0;
 
             if (instr_first_cycle_i) begin
               jump_set_o       = 1'b1;
@@ -642,7 +729,7 @@ module cve2_decoder #(
           // instruction to read/modify CSR
           csr_access_o     = 1'b1;
           rf_wdata_sel_o   = RF_WD_CSR;
-          rf_we            = 1'b1;
+          rf_we_a            = 1'b1;
 
           if (~instr[14]) begin
             rf_ren_a_o         = 1'b1;
@@ -659,8 +746,181 @@ module cve2_decoder #(
         end
 
       end
+
+
+
+//---------------------------------------------------------------------------------
+      /////////////
+      // Custom //
+      ////////////
+
+      // Post-increment Register-Immediate Load operations.
+      OPCODE_POST_INCR_FIRST_SET: begin 
+        if(instr[14:13] != 2'b11) begin
+          data_req_o = 1'b1; // Request to LSU.
+          rf_ren_a_o = 1'b1; // Enable read from register file port 1.
+          rf_we_a    = 1'b1; // Enable write to register file port 1 (loaded data).
+          
+          if(instr[13:12] != 2'b11) begin
+            lsu_addr_mux_sel_o = 1'b1; // Select rs1 to address the memory.
+            rf_we_b            = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
+          end
+        end
+
+        // Sign/zero extension.
+        data_sign_extension_o = {1'b0,~instr[14]}; 
+
+        //Load size.
+        unique case (instr[13:12])
+          2'b00  : data_type_o = 2'b10; // lb/lbu
+          2'b01  : data_type_o = 2'b01; // lh/lhu
+          default: data_type_o = 2'b00; // lw
+        endcase
+      end
+
+      // Post-Increment Register-Register Load operations.
+      // Register-register Load operations.
+      // Post-Increment Register-Immediate Store operations.
+      // Post-increment Register-Register Store operations.
+      // Register-Register Store operations.
+      OPCODE_POST_INCR_SECOND_SET: begin 
+        unique case (instr[14:12])
+          3'b000, 3'b001, 3'b010: begin // Post-Increment Register-Immediate Store operations.
+            data_req_o         = 1'b1;  // Request to LSU.
+            rf_ren_a_o         = 1'b1;  // Enable read from register file port 1.
+            data_we_o          = 1'b1;  // Enable write to memory.
+            lsu_addr_mux_sel_o = 1'b1;  // Select rs1 to address the memory.
+            rf_we_b            = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
+          end
+            // Store size.
+            unique case (instr_rdata_i[13:12])
+              2'b00: begin
+                 data_type_o = 2'b10; // sb
+              end
+              2'b01: begin
+                 data_type_o = 2'b01; // sh
+              end
+              2'b10: begin
+                data_type_o = 2'b00; // sw
+              end
+              default: begin
+                data_req_o         = 1'b0;  
+                rf_ren_a_o         = 1'b0;  
+                data_we_o          = 1'b0;  
+                lsu_addr_mux_sel_o = 1'b0;  
+                rf_we_b            = 1'b0; 
+                data_type_o        = 2'b00;
+                illegal_insn       = 1'b1;
+              end
+            endcase
+
+          3'b011: begin
+            unique case (instr_rdata_i[31:25])
+                7'b0000000, 7'b0001000, 7'b0000001, 7'b0001001, 7'b0000010,       // Post-Increment Register-Register Load operations.
+                7'b0000100, 7'b0001100, 7'b0000101, 7'b0001101, 7'b0000110: begin // Register-register Load operations.
+                  data_req_o = 1'b1; // Request to LSU.
+                  rf_ren_a_o = 1'b1; // Enable read from register file port 1.
+                  rf_ren_b_o = 1'b1; // Enable read from register file port 2.
+                  rf_we_a    = 1'b1; // Enable write to register file port 1 (loaded data).
+                  
+                  if(instr[27] != 1'b0) begin
+                    lsu_addr_mux_sel_o = 1'b1; // Select rs1 to address the memory.
+                    rf_we_b            = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=rs2).
+                  end
+                                 
+                  // Sign/zero extension.
+                  data_sign_extension_o = {1'b0,~instr_rdata_i[28]};
+
+                  // Load size.
+                  unique case ({instr[28],instr[26:25]})
+                    3'b000 : data_type_o = 2'b10; // lb
+                    3'b001 : data_type_o = 2'b01; // lh
+                    3'b010 : data_type_o = 2'b00; // lw
+                    3'b100 : data_type_o = 2'b10; // lbu
+                    3'b101 : data_type_o = 2'b01; // lhu
+                    default: begin
+                      data_req_o         = 1'b0; 
+                      rf_ren_a_o         = 1'b0; 
+                      rf_ren_b_o         = 1'b0; 
+                      rf_we_a            = 1'b0; 
+                      lsu_addr_mux_sel_o = 1'b0; 
+                      rf_we_b            = 1'b0; 
+                      data_type_o        = 2'b00;
+                      illegal_insn       = 1'b1;
+                    end
+                  endcase
+                end
+
+                7'b0010000, 7'b0010001, 7'b0010010,       // Post-increment Register-Register Store operations.
+                7'b0010100, 7'b0010101, 7'b0010110: begin // Register-Register Store operations.
+                  data_req_o         = 1'b1;  // Request to LSU.
+                  rf_ren_a_o         = 1'b1;  // Enable read from register file port 1.
+                  rf_ren_c_o         = 1'b1;  // Enable read from register file port 3.
+                  data_we_o          = 1'b1;  // Enable write to memory.
+
+
+                  if (instr[27] == 1'b0) begin
+                    lsu_addr_mux_sel_o = 1'b1;  // Select rs1 to address the memory.
+                    rf_we_b            = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=rs3.
+                  end
+
+                  // Store size.
+                  unique case (instr_rdata_i[26:25])
+                    2'b00  : data_type_o = 2'b10; // sb
+                    2'b01  : data_type_o = 2'b01; // sh
+                    2'b10  : data_type_o = 2'b00; // sw
+                    default: begin
+                      data_req_o         = 1'b0;  
+                      rf_ren_a_o         = 1'b0; 
+                      rf_ren_c_o         = 1'b0; 
+                      data_we_o          = 1'b0;   
+                      lsu_addr_mux_sel_o = 1'b0;  
+                      rf_we_b            = 1'b0;  
+                      data_type_o        = 2'b00;
+                      illegal_insn       = 1'b1;
+                    end
+                  endcase
+                end
+
+                default: begin
+                  data_req_o         = 1'b0;  
+                  rf_ren_a_o         = 1'b0;
+                  rf_ren_b_o         = 1'b0; 
+                  rf_ren_c_o         = 1'b0; 
+                  rf_we_a            = 1'b0;
+                  rf_we_b            = 1'b0;  
+                  data_we_o          = 1'b0;  
+                  lsu_addr_mux_sel_o = 1'b0;  
+                  rf_we_b            = 1'b0; 
+                  data_type_o        = 2'b00;
+                  illegal_insn       = 1'b1;
+                end
+            endcase
+          end
+
+          default: begin
+            data_req_o         = 1'b0;  
+            rf_ren_a_o         = 1'b0;
+            rf_ren_b_o         = 1'b0; 
+            rf_ren_c_o         = 1'b0; 
+            rf_we_a            = 1'b0;
+            rf_we_b            = 1'b0;  
+            data_we_o          = 1'b0;  
+            lsu_addr_mux_sel_o = 1'b0;  
+            rf_we_b            = 1'b0; 
+            data_type_o        = 2'b00;
+            illegal_insn       = 1'b1;
+          end
+        endcase
+      end
+//---------------------------------------------------------------------------------
+
+
+
       default: begin
         illegal_insn = 1'b1;
+
+
 
 //---------------------------------------------------------------------------------
         for(int i = 0; i < 32; i++) begin
@@ -669,12 +929,14 @@ module cve2_decoder #(
             rf_ren_a_o         = xif_issue_resp_register_read_i[0];     
             rf_ren_b_o         = xif_issue_resp_register_read_i[1];      
             rf_ren_c_o         = xif_issue_resp_register_read_i[2];      
-            rf_we              = xif_issue_resp_writeback_i;                          
+            rf_we_a              = xif_issue_resp_writeback_i;                          
             rf_wdata_sel_o     = RF_WD_COPROC;
             illegal_insn       = 1'b0;
           end
         end
 //---------------------------------------------------------------------------------
+
+
 
       end
     endcase
@@ -690,7 +952,7 @@ module cve2_decoder #(
     // insufficient privileges), or when accessing non-available registers in RV32E,
     // these cases are not handled here
     if (illegal_insn) begin
-      rf_we           = 1'b0;
+      rf_we_a           = 1'b0;
       data_req_o      = 1'b0;
       data_we_o       = 1'b0;
       jump_in_dec_o   = 1'b0;
@@ -708,6 +970,14 @@ module cve2_decoder #(
     alu_operator_o     = ALU_SLTU;
     alu_op_a_mux_sel_o = OP_A_IMM;
     alu_op_b_mux_sel_o = OP_B_IMM;
+
+
+
+//---------------------------------------------------------------------------------
+    alu_op_c_mux_sel_o = OP_C_REG_C;
+//---------------------------------------------------------------------------------
+
+
 
     imm_a_mux_sel_o    = IMM_A_ZERO;
     imm_b_mux_sel_o    = IMM_B_I;
@@ -1192,6 +1462,64 @@ module cve2_decoder #(
         end
 
       end
+
+
+
+//---------------------------------------------------------------------------------
+      /////////////
+      // Custom //
+      /////////////
+      OPCODE_POST_INCR_FIRST_SET: begin
+        alu_operator_o     = ALU_ADD; //rs1 += Sext(Imm[11:0]) 
+        alu_op_b_mux_sel_o = OP_B_IMM;
+        imm_b_mux_sel_o    = IMM_B_I;
+      end
+
+
+      OPCODE_POST_INCR_SECOND_SET: begin
+        unique case (instr[14:12])
+          3'b000, 3'b001, 3'b010: begin   //Post-Increment Register-Immediate Store operations.
+            alu_operator_o     = ALU_ADD; //rs1 += Sext(Imm[11:0]) 
+            alu_op_b_mux_sel_o = OP_B_IMM;
+            imm_b_mux_sel_o    = IMM_B_S;
+            alu_op_c_mux_sel_o = OP_C_REG_B;
+          end
+
+          3'b011: begin
+            unique case (instr_rdata_i[31:25])
+                7'b0000000, 7'b0001000, 7'b0000001, 7'b0001001, 7'b0000010,       // Post-Increment Register-Register Load operations.
+                7'b0000100, 7'b0001100, 7'b0000101, 7'b0001101, 7'b0000110: begin // Register-register Load operations.
+                  alu_operator_o     = ALU_ADD; //rs1+=rs2, Mem(rs1+rs2)
+                  alu_op_b_mux_sel_o = OP_B_REG_B;
+                end
+
+                7'b0010000, 7'b0010001, 7'b0010010,       // Post-increment Register-Register Store operations.
+                7'b0010100, 7'b0010101, 7'b0010110: begin // Register-Register Store operations.
+                  alu_operator_o     = ALU_ADD; //rs1+=rs3, Mem(rs1+rs3)
+                  alu_op_b_mux_sel_o = OP_B_REG_C;
+                  alu_op_c_mux_sel_o = OP_C_REG_B;
+                end
+
+                default: begin
+                  alu_operator_o     = ALU_ADD;
+                  alu_op_b_mux_sel_o = OP_B_REG_B;
+                  alu_op_c_mux_sel_o = OP_C_REG_C;
+                end
+            endcase
+          end       
+    
+          default: begin
+            alu_operator_o     = ALU_SLTU;
+            alu_op_b_mux_sel_o = OP_B_IMM;
+            imm_b_mux_sel_o    = IMM_B_I;
+            alu_op_c_mux_sel_o = OP_C_REG_C;
+          end
+        endcase
+      end
+//-------------------------------------------------------------------------------
+
+
+
       default: ;
     endcase
   end
@@ -1205,7 +1533,15 @@ module cve2_decoder #(
   assign illegal_insn_o = illegal_insn | illegal_reg_rv32e;
 
   // do not propgate regfile write enable if non-available registers are accessed in RV32E
-  assign rf_we_o = rf_we & ~illegal_reg_rv32e;
+  assign rf_we_a_o = rf_we_a & ~illegal_reg_rv32e;
+
+
+
+//---------------------------------------------------------------------------------
+  assign rf_we_b_o = rf_we_b & ~illegal_reg_rv32e;
+//---------------------------------------------------------------------------------
+
+
 
   // Not all bits are used
   assign unused_instr_alu = {instr_alu[19:15],instr_alu[11:7]};

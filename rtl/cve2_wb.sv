@@ -24,16 +24,38 @@ module cve2_wb #(
   output logic                     perf_instr_ret_wb_o,
   output logic                     perf_instr_ret_compressed_wb_o,
 
-  input  logic [4:0]               rf_waddr_id_i,
-  input  logic [31:0]              rf_wdata_id_i,
-  input  logic                     rf_we_id_i,
+
+
+//---------------------------------------------------------------------------------
+// Register file write ports signals coming from ID.
+  input  logic [4:0]               rf_waddr_a_id_i,
+  input  logic [31:0]              rf_wdata_a_id_i,
+  input  logic                     rf_we_a_id_i,
+
+  input  logic [4:0]               rf_waddr_b_id_i,
+  input  logic [31:0]              rf_wdata_b_id_i,
+  input  logic                     rf_we_b_id_i,
+//---------------------------------------------------------------------------------
+
+
 
   input  logic [31:0]              rf_wdata_lsu_i,
   input  logic                     rf_we_lsu_i,
 
-  output logic [4:0]               rf_waddr_wb_o,
-  output logic [31:0]              rf_wdata_wb_o,
-  output logic                     rf_we_wb_o,
+
+
+//---------------------------------------------------------------------------------
+  // 1st register file write port outputs.
+  output logic [4:0]               rf_waddr_a_wb_o,
+  output logic [31:0]              rf_wdata_a_wb_o,
+  output logic                     rf_we_wb_a_o,
+  //2nd register file write port outputs.
+  output logic [4:0]               rf_waddr_b_wb_o,
+  output logic [31:0]              rf_wdata_wb_b_o,
+  output logic                     rf_we_wb_b_o,
+//---------------------------------------------------------------------------------
+
+
 
   input logic                      lsu_resp_valid_i,
   input logic                      lsu_resp_err_i
@@ -47,9 +69,9 @@ module cve2_wb #(
   logic [1:0]  rf_wdata_wb_mux_we;
 
     // without writeback stage just pass through register write signals
-    assign rf_waddr_wb_o         = rf_waddr_id_i;
-    assign rf_wdata_wb_mux[0]    = rf_wdata_id_i;
-    assign rf_wdata_wb_mux_we[0] = rf_we_id_i;
+    assign rf_waddr_a_wb_o       = rf_waddr_a_id_i;
+    assign rf_wdata_wb_mux[0]    = rf_wdata_a_id_i;
+    assign rf_wdata_wb_mux_we[0] = rf_we_a_id_i;
 
     // Increment instruction retire counters for valid instructions which are not lsu errors.
     assign perf_instr_ret_wb_o                 = instr_perf_count_id_i & en_wb_i &
@@ -61,9 +83,17 @@ module cve2_wb #(
 
   // RF write data can come from ID results (all RF writes that aren't because of loads will come
   // from here) or the LSU (RF writes for load data)
-  assign rf_wdata_wb_o = ({32{rf_wdata_wb_mux_we[0]}} & rf_wdata_wb_mux[0]) |
+  assign rf_wdata_a_wb_o = ({32{rf_wdata_wb_mux_we[0]}} & rf_wdata_wb_mux[0]) |
                          ({32{rf_wdata_wb_mux_we[1]}} & rf_wdata_wb_mux[1]);
-  assign rf_we_wb_o    = |rf_wdata_wb_mux_we;
+  assign rf_we_a_wb_o    = |rf_wdata_wb_mux_we;
+
+
+//---------------------------------------------------------------------------------
+  assign rf_waddr_b_wb_o = rf_waddr_b_id_i;
+  assign rf_wdata_wb_b_o = rf_wdata_b_id_i;
+  assign rf_we_wb_b_o    = rf_we_b_i;
+//---------------------------------------------------------------------------------
+
 
   `ASSERT(RFWriteFromOneSourceOnly, $onehot0(rf_wdata_wb_mux_we))
 endmodule

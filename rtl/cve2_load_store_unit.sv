@@ -38,6 +38,15 @@ module cve2_load_store_unit
   input  logic [31:0]  lsu_wdata_i,          // data to write to memory          -> from ID/EX
   input  logic         lsu_sign_ext_i,       // sign extension                   -> from ID/EX
 
+
+
+//---------------------------------------------------------------------------------
+  input logic [4:0]    rf_raddr_a_i,
+  input logic          lsu_addr_mux_sel_i,
+//---------------------------------------------------------------------------------
+
+
+
   output logic [31:0]  lsu_rdata_o,          // requested data                   -> to ID/EX
   output logic         lsu_rdata_valid_o,
   input  logic         lsu_req_i,            // data request                     -> from ID/EX
@@ -100,7 +109,14 @@ module cve2_load_store_unit
 
   ls_fsm_e ls_fsm_cs, ls_fsm_ns;
 
-  assign data_addr   = adder_result_ex_i;
+
+
+//---------------------------------------------------------------------------------
+  assign data_addr   = lsu_addr_mux_sel_i ? rf_raddr_a_i : adder_result_ex_i;
+//---------------------------------------------------------------------------------
+
+
+
   assign data_offset = data_addr[1:0];
 
   ///////////////////
