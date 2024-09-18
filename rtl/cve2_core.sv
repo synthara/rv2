@@ -415,6 +415,8 @@ module cve2_core import cve2_pkg::*; #(
   // For non secure Ibex only the bottom bit of fetch enable is considered
   assign instr_req_gated = instr_req_int;
 
+  logic instr_post_incr_valid;
+
   //////////////
   // ID stage //
   //////////////
@@ -597,7 +599,7 @@ module cve2_core import cve2_pkg::*; #(
     .rf_we_b_id_o   (rf_we_b_id),
 //---------------------------------------------------------------------------------
 
-
+    .instr_post_incr_valid_o(instr_post_incr_valid),
 
     .en_wb_o           (en_wb),
     .instr_perf_count_id_o (instr_perf_count_id),
@@ -686,7 +688,9 @@ module cve2_core import cve2_pkg::*; #(
 
 
 //---------------------------------------------------------------------------------
-    .rf_raddr_a_i      (rf_raddr_a),
+    .instr_post_incr_valid_i(instr_post_incr_valid),
+    .we_b_i(rf_we_b_wb),
+    .alu_operand_a_i   (alu_operand_a_ex),
     .lsu_addr_mux_sel_i(lsu_addr_mux_sel),
 //---------------------------------------------------------------------------------
 
