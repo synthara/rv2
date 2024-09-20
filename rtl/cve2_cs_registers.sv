@@ -78,10 +78,12 @@ module cve2_cs_registers #(
 
   input  logic [31:0]          pc_if_i,
   input  logic [31:0]          pc_id_i,
+  input  logic [31:0]          pc_wb_i,
 
   // Exception save/restore
   input  logic                 csr_save_if_i,
   input  logic                 csr_save_id_i,
+  input  logic                 csr_save_wb_i,
   input  logic                 csr_restore_mret_i,
   input  logic                 csr_restore_dret_i,
   input  logic                 csr_save_cause_i,
@@ -93,6 +95,8 @@ module cve2_cs_registers #(
   // Performance Counters
   input  logic                 instr_ret_i,                 // instr retired in ID/EX stage
   input  logic                 instr_ret_compressed_i,      // compressed instr retired
+  input  logic                 instr_ret_spec_i,            // speculative instr_ret_i
+  input  logic                 instr_ret_compressed_spec_i, // speculative instr_ret_compressed_i
   input  logic                 iside_wait_i,                // core waiting for the iside
   input  logic                 jump_i,                      // jump instr seen (j, jr, jal, jalr)
   input  logic                 branch_i,                    // branch instr seen (bf, bnf)
@@ -216,7 +220,8 @@ import cve2_pkg::*;
   logic        unused_mhpmcounterh_we_1;
   logic        unused_mhpmcounter_incr_1;
 
-  logic [63:0] minstret_raw;
+  // logic [63:0] minstret_raw;
+  logic [63:0] minstret_next, minstret_raw;
 
   // Debug / trigger registers
   logic [31:0] tselect_rdata;
@@ -629,6 +634,9 @@ import cve2_pkg::*;
           end
           csr_save_id_i: begin
             exception_pc = pc_id_i;
+          end
+          csr_save_wb_i: begin
+            exception_pc = pc_wb_i;
           end
           default:;
         endcase
@@ -1231,7 +1239,8 @@ import cve2_pkg::*;
     .counter_we_i(mhpmcounter_we[2]),
     .counter_val_i(csr_wdata_int),
     .counter_val_o(minstret_raw),
-    .counter_val_upd_o()
+    // .counter_val_upd_o()
+    .counter_val_upd_o(minstret_next)
   );
 
   // Where the writeback stage is present instruction in ID observing value of minstret must take
@@ -1241,7 +1250,8 @@ import cve2_pkg::*;
   // so the incorrect value doesn't matter. A similar behaviour is required for the compressed
   // instruction retired counter below. When the writeback stage isn't present the speculative
   // signals are always 0.
-  assign mhpmcounter[2] = minstret_raw;
+ assign mhpmcounter[2] = instr_ret_spec_i & ~mcountinhibit[2] ? minstret_next : minstret_raw;
+  // assign mhpmcounter[2] = minstret_raw;
 
   // reserved:
   assign mhpmcounter[1]            = '0;
@@ -1274,6 +1284,7 @@ import cve2_pkg::*;
         // Special behaviour for reading compressed instruction retired counter, see comment on
         // `mhpmcounter[2]` above for further information.
         assign mhpmcounter[Cnt] =
+          instr_ret_compressed_spec_i & ~mcountinhibit[Cnt] ? mhpmcounter_next:
                                                               mhpmcounter_raw;
       end else begin : gen_other_cnts
         logic [63:0] unused_mhpmcounter_next;
@@ -1283,6 +1294,12 @@ import cve2_pkg::*;
       end
     end else begin : gen_unimp
       assign mhpmcounter[Cnt] = '0;
+
+      if (Cnt == 10) begin : gen_no_compressed_instr_cnt
+        logic unused_instr_ret_compressed_spec_i;
+        assign unused_instr_ret_compressed_spec_i = instr_ret_compressed_spec_i;
+      end
+ 
     end
   end
 
@@ -1446,7 +1463,9 @@ import cve2_pkg::*;
   //////////////////////////
 
 `ifdef RVFI
-    logic [63:0] mstatus_extended_read, mie_extended_read, mip_extended_read, mcause_extended_read;
+    logic [63:0] mstatus_extended_read;
+    logic [63:0] mstatus_extended_write;
+    // logic [63:0] mstatus_extended_read, mie_extended_read, mip_extended_read, mcause_extended_read;
 
     // Extended Reads
     assign  mstatus_extended_read[CSR_MSTATUS_MIE_BIT]                              = mstatus_q.mie;
@@ -1455,24 +1474,24 @@ import cve2_pkg::*;
     assign  mstatus_extended_read[CSR_MSTATUS_MPRV_BIT]                             = mstatus_q.mprv;
     assign  mstatus_extended_read[CSR_MSTATUS_TW_BIT]                               = mstatus_q.tw;
 
-    assign mie_extended_read[CSR_MSIX_BIT]                       = mie_q.irq_software;
-    assign mie_extended_read[CSR_MTIX_BIT]                       = mie_q.irq_timer;
-    assign mie_extended_read[CSR_MEIX_BIT]                       = mie_q.irq_external;
+    // assign mie_extended_read[CSR_MSIX_BIT]                       = mie_q.irq_software;
+    // assign mie_extended_read[CSR_MTIX_BIT]                       = mie_q.irq_timer;
+    // assign mie_extended_read[CSR_MEIX_BIT]                       = mie_q.irq_external;
 
-    assign mip_extended_read[CSR_MSIX_BIT]                       = mip.irq_software;
-    assign mip_extended_read[CSR_MTIX_BIT]                       = mip.irq_timer;
-    assign mip_extended_read[CSR_MEIX_BIT]                       = mip.irq_external;
-    assign mip_extended_read[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
+    // assign mip_extended_read[CSR_MSIX_BIT]                       = mip.irq_software;
+    // assign mip_extended_read[CSR_MTIX_BIT]                       = mip.irq_timer;
+    // assign mip_extended_read[CSR_MEIX_BIT]                       = mip.irq_external;
+    // assign mip_extended_read[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
 
-    assign mcause_extended_read = {mcause_q[6], 25'b0, mcause_q[5:0]};
+    // assign mcause_extended_read = {mcause_q[6], 25'b0, mcause_q[5:0]};
 
-    // Extended Writes
-    logic [63:0] mstatus_extended_write, mie_extended_write, mcause_extended_write;
+    // // Extended Writes
+    // logic [63:0] mstatus_extended_write, mie_extended_write, mcause_extended_write;
 
-    assign mie_extended_write[CSR_MSIX_BIT]                       = mie_d.irq_software;
-    assign mie_extended_write[CSR_MTIX_BIT]                       = mie_d.irq_timer;
-    assign mie_extended_write[CSR_MEIX_BIT]                       = mie_d.irq_external;
-    assign mie_extended_write[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_d.irq_fast;
+    // assign mie_extended_write[CSR_MSIX_BIT]                       = mie_d.irq_software;
+    // assign mie_extended_write[CSR_MTIX_BIT]                       = mie_d.irq_timer;
+    // assign mie_extended_write[CSR_MEIX_BIT]                       = mie_d.irq_external;
+    // assign mie_extended_write[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_d.irq_fast;
     //
     assign  mstatus_extended_write[CSR_MSTATUS_MIE_BIT]                              = mstatus_d.mie;
     assign  mstatus_extended_write[CSR_MSTATUS_MPIE_BIT]                             = mstatus_d.mpie;
@@ -1480,11 +1499,12 @@ import cve2_pkg::*;
     assign  mstatus_extended_write[CSR_MSTATUS_MPRV_BIT]                             = mstatus_d.mprv;
     assign  mstatus_extended_write[CSR_MSTATUS_TW_BIT]                               = mstatus_d.tw;
 
-    assign mcause_extended_write = {mcause_d[6], 25'b0, mcause_d[5:0]};
+    // assign mcause_extended_write = {mcause_d[6], 25'b0, mcause_d[5:0]};
 
     wire [63:0] rvfi_csr_bypass;
 
-    assign rvfi_csr_bypass = csr_save_cause_i | debug_csr_save_i;
+    // assign rvfi_csr_bypass = csr_save_cause_i | debug_csr_save_i;
+    assign rvfi_csr_bypass = csr_save_cause_i;
 
     bit [63:0] rvfi_csr_addr;
     bit [63:0] rvfi_csr_rdata;
@@ -1529,19 +1549,33 @@ import cve2_pkg::*;
     end
 
    `RVFI_CONNECT( CSR_MSTATUS,          mstatus                     ,  mstatus_extended_read  , mstatus_extended_write , , || mstatus_en)
-   `RVFI_CONNECT( CSR_MIE,              mie                         ,  mie_extended_read      , mie_extended_write     , , || mie_en    )
-   `RVFI_CONNECT( CSR_MIP,              mip                         ,  mip_extended_read      , mip_extended_read      , , )
-   `RVFI_CONNECT( CSR_MISA,             misa                        ,  MISA_VALUE             , MISA_VALUE             , ,              )
+   `RVFI_CONNECT( CSR_MIE,              mie                         ,  mie_q                  , mie_d                  , , || mie_en    )
+   `RVFI_CONNECT( CSR_MIP,              mip                         ,  mip                    , csr_wdata_i            , , )
+   `RVFI_CONNECT( CSR_MISA,             misa                        ,  MISA_VALUE             , csr_wdata_i            , ,              )
+
+  //  `RVFI_CONNECT( CSR_MIE,              mie                         ,  mie_extended_read      , mie_extended_write     , , || mie_en    )
+  //  `RVFI_CONNECT( CSR_MIP,              mip                         ,  mip_extended_read      , mip_extended_read      , , )
+  //  `RVFI_CONNECT( CSR_MISA,             misa                        ,  MISA_VALUE             , MISA_VALUE             , ,              )
    `RVFI_CONNECT( CSR_MTVEC,            mtvec                       ,  mtvec_q                , mtvec_d                , , || mtvec_en  )
    `RVFI_CONNECT( CSR_MEPC,             mepc                        ,  mepc_q                 , mepc_d                 , , || mepc_en   )
-   `RVFI_CONNECT( CSR_MCAUSE,           mcause                      ,  mcause_extended_read   , mcause_extended_write  , , || mcause_en )
+
+   `RVFI_CONNECT( CSR_MCAUSE,           mcause                      ,  mcause_q               , mcause_d               , , || mcause_en )
+  //  `RVFI_CONNECT( CSR_MCAUSE,           mcause                      ,  mcause_extended_read   , mcause_extended_write  , , || mcause_en )
+
    `RVFI_CONNECT( CSR_MTVAL,            mtval                       ,  mtval_q                , mtval_d                , , || mtval_en  )
-   `RVFI_CONNECT( CSR_MSTATUSH,         mstatush                    ,  'h0                    , csr_wdata_int          , , )
+
+   `RVFI_CONNECT( CSR_MSTATUSH,         mstatush                    ,  'h0                    , csr_wdata_i            , , )
+  //  `RVFI_CONNECT( CSR_MSTATUSH,         mstatush                    ,  'h0                    , csr_wdata_int          , , )
+
    `RVFI_CONNECT( CSR_DCSR,             dcsr                        ,  dcsr_q                 , dcsr_d                 , , || dcsr_en)
    `RVFI_CONNECT( CSR_DPC,              dpc                         ,  depc_q                 , depc_d                 , , || depc_en)
-   `RVFI_CONNECT( CSR_DSCRATCH0,        dscratch0                   ,  dscratch0_q            , csr_wdata_int          , , || dscratch0_en)
-   `RVFI_CONNECT( CSR_DSCRATCH1,        dscratch1                   ,  dscratch1_q            , csr_wdata_int          , , || dscratch1_en)
-   `RVFI_CONNECT( CSR_MSCRATCH,         mscratch                    ,  mscratch_q             , csr_wdata_int          , , || mscratch_en)
+
+   `RVFI_CONNECT( CSR_DSCRATCH0,        dscratch0                   ,  dscratch0_q            , csr_wdata_i            , , || dscratch0_en)
+   `RVFI_CONNECT( CSR_DSCRATCH1,        dscratch1                   ,  dscratch1_q            , csr_wdata_i            , , || dscratch1_en)
+
+  //  `RVFI_CONNECT( CSR_DSCRATCH0,        dscratch0                   ,  dscratch0_q            , csr_wdata_int          , , || dscratch0_en)
+  //  `RVFI_CONNECT( CSR_DSCRATCH1,        dscratch1                   ,  dscratch1_q            , csr_wdata_int          , , || dscratch1_en)
+  //  `RVFI_CONNECT( CSR_MSCRATCH,         mscratch                    ,  mscratch_q             , csr_wdata_int          , , || mscratch_en)
 
 `endif
 

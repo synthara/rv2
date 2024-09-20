@@ -59,6 +59,12 @@ parameters:
     paramtype: vlogparam
     description: "Enable ECC protection in instruction cache"
 
+  WritebackStage:
+    datatype: int
+    paramtype: vlogparam
+    default: 1
+    description: "Enables third pipeline stage (EXPERIMENTAL)"
+
   PMPEnable:
     datatype: int
     default: 0

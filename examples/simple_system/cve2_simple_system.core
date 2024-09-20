@@ -54,6 +54,12 @@ parameters:
     paramtype: vlogparam
     description: "Path to a vmem file to initialize the RAM with"
 
+  WritebackStage:
+    datatype: int
+    paramtype: vlogparam
+    default: 1
+    description: "Enables third pipeline stage (EXPERIMENTAL)"
+
   SecureIbex:
     datatype: int
     default: 0

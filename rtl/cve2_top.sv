@@ -17,6 +17,7 @@ module cve2_top import cve2_pkg::*; #(
   parameter int unsigned MHPMCounterWidth = 40,
   parameter bit          RV32E            = 1'b0,
   parameter rv32m_e      RV32M            = RV32MFast,
+  parameter bit          WritebackStage   = 1'b1,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
   parameter int unsigned DmExceptionAddr  = 32'h1A110808
 ) (
@@ -160,6 +161,7 @@ module cve2_top import cve2_pkg::*; #(
     .RV32B            (RV32B),
     .DbgTriggerEn     (DbgTriggerEn),
     .DbgHwBreakNum    (DbgHwBreakNum),
+    .WritebackStage   (WritebackStage),
     .DmHaltAddr       (DmHaltAddr),
     .DmExceptionAddr  (DmExceptionAddr)
   ) u_cve2_core (

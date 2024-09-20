@@ -21,6 +21,7 @@ module cve2_core import cve2_pkg::*; #(
   parameter bit          RV32E             = 1'b0,
   parameter rv32m_e      RV32M             = RV32MFast,
   parameter rv32b_e      RV32B             = RV32BNone,
+  parameter bit          WritebackStage    = 1'b1,
   parameter bit          DbgTriggerEn      = 1'b0,
   parameter int unsigned DbgHwBreakNum     = 1,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
@@ -123,6 +124,7 @@ module cve2_core import cve2_pkg::*; #(
   logic        illegal_c_insn_id;              // Illegal compressed instruction sent to ID stage
   logic [31:0] pc_if;                          // Program counter in IF stage
   logic [31:0] pc_id;                          // Program counter in ID stage
+  logic [31:0] pc_wb;                          // Program counter in WB stage
   logic [33:0] imd_val_d_ex[2];                // Intermediate register for multicycle Ops
   logic [33:0] imd_val_q_ex[2];                // Intermediate register for multicycle Ops
   logic [1:0]  imd_val_we_ex;
@@ -161,6 +163,7 @@ module cve2_core import cve2_pkg::*; #(
   logic [31:0] rf_wdata_wb;
   // Writeback register write data that can be used on the forwarding path (doesn't factor in memory
   // read data as this is too late for the forwarding path)
+  logic [31:0] rf_wdata_fwd_wb;
   logic [31:0] rf_wdata_lsu;
   logic        rf_we_wb;
   logic        rf_we_lsu;
@@ -186,6 +189,7 @@ module cve2_core import cve2_pkg::*; #(
   logic [1:0]  multdiv_signed_mode_ex;
   logic [31:0] multdiv_operand_a_ex;
   logic [31:0] multdiv_operand_b_ex;
+  logic        multdiv_ready_id;
 
   // CSR control
   logic        csr_access;
@@ -204,6 +208,7 @@ module cve2_core import cve2_pkg::*; #(
   logic        lsu_sign_ext;
   logic        lsu_req;
   logic [31:0] lsu_wdata;
+  logic        lsu_req_done;
 
   // stall control
   logic        id_in_ready;
@@ -217,7 +222,16 @@ module cve2_core import cve2_pkg::*; #(
   logic        instr_req_gated;
 
   // Writeback
-  logic        en_wb;
+  // Writeback stage
+  logic           en_wb;
+  wb_instr_type_e instr_type_wb;
+  logic           ready_wb;
+  logic           rf_write_wb;
+  logic           outstanding_load_wb;
+  logic           outstanding_store_wb;
+
+  // logic           dummy_instr_wb;
+  // logic        en_wb;
 
   // Interrupts
   logic        nmi_mode;
@@ -234,6 +248,7 @@ module cve2_core import cve2_pkg::*; #(
 
   logic        csr_save_if;
   logic        csr_save_id;
+  logic        csr_save_wb;
   logic        csr_restore_mret_id;
   logic        csr_restore_dret_id;
   logic        csr_save_cause;
@@ -256,9 +271,11 @@ module cve2_core import cve2_pkg::*; #(
   // signals relating to instruction movements between pipeline stages
   // used by performance counters and RVFI
   logic        instr_id_done;
+  logic        instr_done_wb;
 
   logic        perf_instr_ret_wb;
   logic        perf_instr_ret_compressed_wb;
+  logic        perf_instr_ret_wb_spec;
   logic        perf_iside_wait;
   logic        perf_dside_wait;
   logic        perf_wfi_wait;
@@ -353,7 +370,8 @@ module cve2_core import cve2_pkg::*; #(
   cve2_id_stage #(
     .RV32E          (RV32E),
     .RV32M          (RV32M),
-    .RV32B          (RV32B)
+    .RV32B          (RV32B),
+    .WritebackStage (WritebackStage)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -409,6 +427,7 @@ module cve2_core import cve2_pkg::*; #(
     .multdiv_signed_mode_ex_o(multdiv_signed_mode_ex),
     .multdiv_operand_a_ex_o  (multdiv_operand_a_ex),
     .multdiv_operand_b_ex_o  (multdiv_operand_b_ex),
+    .multdiv_ready_id_o      (multdiv_ready_id),
 
     // CSR ID/EX
     .csr_access_o         (csr_access),
@@ -416,6 +435,7 @@ module cve2_core import cve2_pkg::*; #(
     .csr_op_en_o          (csr_op_en),
     .csr_save_if_o        (csr_save_if),  // control signal to save PC
     .csr_save_id_o        (csr_save_id),  // control signal to save PC
+    .csr_save_wb_o        (csr_save_wb),  // control signal to save PC
     .csr_restore_mret_id_o(csr_restore_mret_id),  // restore mstatus upon MRET
     .csr_restore_dret_id_o(csr_restore_dret_id),  // restore mstatus upon MRET
     .csr_save_cause_o     (csr_save_cause),
@@ -430,6 +450,7 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_type_o    (lsu_type),  // to load store unit
     .lsu_sign_ext_o(lsu_sign_ext),  // to load store unit
     .lsu_wdata_o   (lsu_wdata),  // to load store unit
+    .lsu_req_done_i(lsu_req_done),  // from load store unit
 
     .lsu_addr_incr_req_i(lsu_addr_incr_req),
     .lsu_addr_last_i    (lsu_addr_last),
@@ -466,10 +487,22 @@ module cve2_core import cve2_pkg::*; #(
     .rf_ren_b_o        (rf_ren_b),
     .rf_waddr_id_o     (rf_waddr_id),
     .rf_wdata_id_o     (rf_wdata_id),
-    .rf_we_id_o        (rf_we_id),
+    .rf_we_id_o        (rf_we_id),    
+    .rf_rd_a_wb_match_o(),
+    .rf_rd_b_wb_match_o(),
+
+    .rf_waddr_wb_i    (rf_waddr_wb),
+    .rf_wdata_fwd_wb_i(rf_wdata_fwd_wb),
+    .rf_write_wb_i    (rf_write_wb),
 
     .en_wb_o           (en_wb),
+    .instr_type_wb_o   (instr_type_wb),
     .instr_perf_count_id_o (instr_perf_count_id),
+    
+    .ready_wb_i            (ready_wb),
+    .outstanding_load_wb_i (outstanding_load_wb),
+    .outstanding_store_wb_i(outstanding_store_wb),
+
 
     // Performance Counters
     .perf_jump_o      (perf_jump),
@@ -506,6 +539,7 @@ module cve2_core import cve2_pkg::*; #(
     .multdiv_signed_mode_i(multdiv_signed_mode_ex),
     .multdiv_operand_a_i  (multdiv_operand_a_ex),
     .multdiv_operand_b_i  (multdiv_operand_b_ex),
+    .multdiv_ready_id_i   (multdiv_ready_id),
 
     // Intermediate value register
     .imd_val_we_o(imd_val_we_ex),
@@ -555,6 +589,7 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_rdata_o      (rf_wdata_lsu),
     .lsu_rdata_valid_o(rf_we_lsu),
     .lsu_req_i        (lsu_req),
+    .lsu_req_done_o   (lsu_req_done),
 
     .adder_result_ex_i(alu_adder_result_ex),
 
@@ -574,31 +609,75 @@ module cve2_core import cve2_pkg::*; #(
     .perf_store_o(perf_store)
   );
 
-  cve2_wb #(
-  ) wb_i (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-    .en_wb_i (en_wb),
+  // cve2_wb #(
+  // ) wb_i (
+  //   .clk_i   (clk_i),
+  //   .rst_ni  (rst_ni),
+  //   .en_wb_i (en_wb),
 
+  //   .instr_is_compressed_id_i(instr_is_compressed_id),
+  //   .instr_perf_count_id_i   (instr_perf_count_id),
+
+  //   .perf_instr_ret_wb_o                (perf_instr_ret_wb),
+  //   .perf_instr_ret_compressed_wb_o     (perf_instr_ret_compressed_wb),
+
+  //   .rf_waddr_id_i(rf_waddr_id),
+  //   .rf_wdata_id_i(rf_wdata_id),
+  //   .rf_we_id_i   (rf_we_id),
+
+  //   .rf_wdata_lsu_i(rf_wdata_lsu),
+  //   .rf_we_lsu_i   (rf_we_lsu),
+
+  //   .rf_waddr_wb_o(rf_waddr_wb),
+  //   .rf_wdata_wb_o(rf_wdata_wb),
+  //   .rf_we_wb_o   (rf_we_wb),
+
+  //   .lsu_resp_valid_i(lsu_resp_valid),
+  //   .lsu_resp_err_i  (lsu_resp_err)
+  // );
+
+  cve2_wb_stage #(
+    .WritebackStage(WritebackStage)
+  ) wb_stage_i (
+    .clk_i                   (clk_i),
+    .rst_ni                  (rst_ni),
+    .en_wb_i                 (en_wb),
+    .instr_type_wb_i         (instr_type_wb),
+    .pc_id_i                 (pc_id),
     .instr_is_compressed_id_i(instr_is_compressed_id),
     .instr_perf_count_id_i   (instr_perf_count_id),
 
+    .ready_wb_o                         (ready_wb),
+    .rf_write_wb_o                      (rf_write_wb),
+    .outstanding_load_wb_o              (outstanding_load_wb),
+    .outstanding_store_wb_o             (outstanding_store_wb),
+    .pc_wb_o                            (pc_wb),
     .perf_instr_ret_wb_o                (perf_instr_ret_wb),
     .perf_instr_ret_compressed_wb_o     (perf_instr_ret_compressed_wb),
+    .perf_instr_ret_wb_spec_o           (perf_instr_ret_wb_spec),
+    .perf_instr_ret_compressed_wb_spec_o(perf_instr_ret_compressed_wb_spec),
 
     .rf_waddr_id_i(rf_waddr_id),
     .rf_wdata_id_i(rf_wdata_id),
     .rf_we_id_i   (rf_we_id),
 
+    // .dummy_instr_id_i(dummy_instr_id),
+
     .rf_wdata_lsu_i(rf_wdata_lsu),
     .rf_we_lsu_i   (rf_we_lsu),
+
+    .rf_wdata_fwd_wb_o(rf_wdata_fwd_wb),
 
     .rf_waddr_wb_o(rf_waddr_wb),
     .rf_wdata_wb_o(rf_wdata_wb),
     .rf_we_wb_o   (rf_we_wb),
 
+    // .dummy_instr_wb_o(dummy_instr_wb),
+
     .lsu_resp_valid_i(lsu_resp_valid),
-    .lsu_resp_err_i  (lsu_resp_err)
+    .lsu_resp_err_i  (lsu_resp_err),
+
+    .instr_done_wb_o(instr_done_wb)
   );
 
   ///////////////////////
@@ -625,12 +704,28 @@ module cve2_core import cve2_pkg::*; #(
   assign outstanding_store_id = id_stage_i.instr_executing & id_stage_i.lsu_req_dec &
                                 id_stage_i.lsu_we;
 
+  if (WritebackStage) begin : gen_wb_stage
+    // When the writeback stage is present a load/store could be in ID or WB. A Load/store in ID can
+    // see a response before it moves to WB when it is unaligned otherwise we should only see
+    // a response when load/store is in WB.
+    assign outstanding_load_resp  = outstanding_load_wb |
+      (outstanding_load_id  & load_store_unit_i.split_misaligned_access);
+
+    assign outstanding_store_resp = outstanding_store_wb |
+      (outstanding_store_id & load_store_unit_i.split_misaligned_access);
+
+    // When writing back the result of a load, the load must have made it to writeback
+    `ASSERT(NoMemRFWriteWithoutPendingLoad, rf_we_lsu |-> outstanding_load_wb, clk_i, !rst_ni)
+  end else begin : gen_no_wb_stage
+
+
   // Without writeback stage only look into whether load or store is in ID to determine if
   // a response is expected.
   assign outstanding_load_resp  = outstanding_load_id;
   assign outstanding_store_resp = outstanding_store_id;
 
   `ASSERT(NoMemRFWriteWithoutPendingLoad, rf_we_lsu |-> outstanding_load_id, clk_i, !rst_ni)
+  end
 
   `ASSERT(NoMemResponseWithoutPendingAccess,
     data_rvalid_i |-> outstanding_load_resp | outstanding_store_resp, clk_i, !rst_ni)
@@ -657,6 +752,9 @@ module cve2_core import cve2_pkg::*; #(
     .wdata_a_i(rf_wdata_wb),
     .we_a_i   (rf_we_wb)
   );
+
+//   `ifdef RVFI
+// `endif
 
 
   /////////////////////////////////////////
@@ -728,9 +826,11 @@ module cve2_core import cve2_pkg::*; #(
 
     .pc_if_i(pc_if),
     .pc_id_i(pc_id),
+    .pc_wb_i(pc_wb),
 
     .csr_save_if_i     (csr_save_if),
     .csr_save_id_i     (csr_save_id),
+    .csr_save_wb_i     (csr_save_wb),
     .csr_restore_mret_i(csr_restore_mret_id),
     .csr_restore_dret_i(csr_restore_dret_id),
     .csr_save_cause_i  (csr_save_cause),
@@ -741,6 +841,8 @@ module cve2_core import cve2_pkg::*; #(
     // performance counter related signals
     .instr_ret_i                (perf_instr_ret_wb),
     .instr_ret_compressed_i     (perf_instr_ret_compressed_wb),
+    .instr_ret_spec_i           (perf_instr_ret_wb_spec),
+    .instr_ret_compressed_spec_i(perf_instr_ret_compressed_wb_spec),
     .iside_wait_i               (perf_iside_wait),
     .jump_i                     (perf_jump),
     .branch_i                   (perf_branch),
@@ -817,16 +919,18 @@ module cve2_core import cve2_pkg::*; #(
   // second stage. RVFI outputs are all straight from flops. So 2 stage pipeline requires a single
   // set of flops (instr_info => RVFI_out), 3 stage pipeline requires two sets (instr_info => wb
   // => RVFI_out)
-  localparam int RVFI_STAGES = 1;
+  localparam int RVFI_STAGES = WritebackStage ? 2 : 1;
+  // localparam int RVFI_STAGES = 1;
 
   logic        rvfi_stage_valid     [RVFI_STAGES];
   logic [63:0] rvfi_stage_order     [RVFI_STAGES];
   logic [31:0] rvfi_stage_insn      [RVFI_STAGES];
   logic        rvfi_stage_trap      [RVFI_STAGES];
   logic        rvfi_stage_halt      [RVFI_STAGES];
-  logic [3:0]  rvfi_stage_dbg       [RVFI_STAGES];
-  logic        rvfi_stage_dbg_mode  [RVFI_STAGES];
-  logic [15:0] rvfi_stage_intr      [RVFI_STAGES];
+  // logic [3:0]  rvfi_stage_dbg       [RVFI_STAGES];
+  // logic        rvfi_stage_dbg_mode  [RVFI_STAGES];
+  logic        rvfi_stage_intr      [RVFI_STAGES];
+  // logic [15:0] rvfi_stage_intr      [RVFI_STAGES];
   logic [ 1:0] rvfi_stage_mode      [RVFI_STAGES];
   logic [ 1:0] rvfi_stage_ixl       [RVFI_STAGES];
   logic [ 4:0] rvfi_stage_rs1_addr  [RVFI_STAGES];
@@ -876,22 +980,24 @@ module cve2_core import cve2_pkg::*; #(
   logic [31:0] rvfi_mem_addr_d;
   logic [31:0] rvfi_mem_addr_q;
   logic        rvfi_trap_id;
+  logic        rvfi_trap_wb;
   logic [63:0] rvfi_stage_order_d;
   logic        rvfi_id_done;
-  logic [3:0]  rvfi_dbg;
-  logic        rvfi_dbg_mode;
+  // logic [3:0]  rvfi_dbg;
+  // logic        rvfi_dbg_mode;
+  logic        rvfi_wb_done;
 
   logic            new_debug_req;
   logic            new_nmi;
   logic            new_irq;
   cve2_pkg::irqs_t captured_mip;
-  logic            captured_irq;
+  // logic            captured_irq;
   logic            captured_nmi;
   logic            captured_debug_req;
   logic            captured_valid;
 
-  logic [3:0]      captured_debug_cause;
-  logic            captured_debug_valid;
+  // logic [3:0]      captured_debug_cause;
+  // logic            captured_debug_valid;
 
   // RVFI extension for co-simulation support
   // debug_req and MIP captured at IF -> ID transition so one extra stage
@@ -928,31 +1034,31 @@ module cve2_core import cve2_pkg::*; #(
   assign rvfi_mem_rdata = rvfi_stage_mem_rdata[RVFI_STAGES-1];
   assign rvfi_mem_wdata = rvfi_stage_mem_wdata[RVFI_STAGES-1];
 
-  assign rvfi_instr_if.rvfi_valid     = rvfi_stage_valid    [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_order     = rvfi_stage_order    [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_insn      = rvfi_stage_insn     [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_trap      = rvfi_stage_trap     [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_halt      = rvfi_stage_halt     [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_dbg       = rvfi_stage_dbg      [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_dbg_mode  = rvfi_stage_dbg_mode [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_intr      = rvfi_stage_intr     [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_mode      = rvfi_stage_mode     [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_ixl       = rvfi_stage_ixl      [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rs1_addr  = rvfi_stage_rs1_addr [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rs2_addr  = rvfi_stage_rs2_addr [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rs3_addr  = rvfi_stage_rs3_addr [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rs1_rdata = rvfi_stage_rs1_rdata[RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rs2_rdata = rvfi_stage_rs2_rdata[RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rs3_rdata = rvfi_stage_rs3_rdata[RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rd1_addr   = rvfi_stage_rd_addr  [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_rd1_wdata  = rvfi_stage_rd_wdata [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_pc_rdata  = rvfi_stage_pc_rdata [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_pc_wdata  = rvfi_stage_pc_wdata [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_mem_addr  = rvfi_stage_mem_addr [RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_mem_rmask = rvfi_stage_mem_rmask[RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_mem_wmask = rvfi_stage_mem_wmask[RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_mem_rdata = rvfi_stage_mem_rdata[RVFI_STAGES-1];
-  assign rvfi_instr_if.rvfi_mem_wdata = rvfi_stage_mem_wdata[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_valid     = rvfi_stage_valid    [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_order     = rvfi_stage_order    [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_insn      = rvfi_stage_insn     [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_trap      = rvfi_stage_trap     [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_halt      = rvfi_stage_halt     [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_dbg       = rvfi_stage_dbg      [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_dbg_mode  = rvfi_stage_dbg_mode [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_intr      = rvfi_stage_intr     [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_mode      = rvfi_stage_mode     [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_ixl       = rvfi_stage_ixl      [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rs1_addr  = rvfi_stage_rs1_addr [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rs2_addr  = rvfi_stage_rs2_addr [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rs3_addr  = rvfi_stage_rs3_addr [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rs1_rdata = rvfi_stage_rs1_rdata[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rs2_rdata = rvfi_stage_rs2_rdata[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rs3_rdata = rvfi_stage_rs3_rdata[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rd1_addr   = rvfi_stage_rd_addr  [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_rd1_wdata  = rvfi_stage_rd_wdata [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_pc_rdata  = rvfi_stage_pc_rdata [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_pc_wdata  = rvfi_stage_pc_wdata [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_mem_addr  = rvfi_stage_mem_addr [RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_mem_rmask = rvfi_stage_mem_rmask[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_mem_wmask = rvfi_stage_mem_wmask[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_mem_rdata = rvfi_stage_mem_rdata[RVFI_STAGES-1];
+  // assign rvfi_instr_if.rvfi_mem_wdata = rvfi_stage_mem_wdata[RVFI_STAGES-1];
 
   assign rvfi_rd_addr_wb  = rf_waddr_wb;
   assign rvfi_rd_wdata_wb = rf_we_wb ? rf_wdata_wb : rf_wdata_lsu;
@@ -984,6 +1090,44 @@ module cve2_core import cve2_pkg::*; #(
                          id_stage_i.csr_restore_mret_id_o |
                         (id_stage_i.controller_i.rvfi_flush_next & id_stage_i.controller_i.exc_req_d);
 
+  if (WritebackStage) begin : gen_rvfi_wb_stage
+    logic unused_instr_new_id;
+
+    assign unused_instr_new_id = instr_new_id;
+
+    // With writeback stage first RVFI stage buffers instruction information captured in ID/EX
+    // awaiting instruction retirement and RF Write data/Mem read data whilst instruction is in WB
+    // So first stage becomes valid when instruction leaves ID/EX stage and remains valid until
+    // instruction leaves WB
+    assign rvfi_stage_valid_d[0] = rvfi_id_done |
+                                   (rvfi_stage_valid[0] & ~rvfi_wb_done);
+    // Second stage is output stage so simple valid cycle after instruction leaves WB (and so has
+    // retired)
+    assign rvfi_stage_valid_d[1] = rvfi_wb_done;
+
+    // Signal new instruction in WB cycle after instruction leaves ID/EX (to enter WB)
+    logic rvfi_instr_new_wb_q;
+
+    // Signal new instruction in WB either when one has just entered or when a trap is progressing
+    // through the tracking pipeline
+    assign rvfi_instr_new_wb = rvfi_instr_new_wb_q | (rvfi_stage_valid[0] & rvfi_stage_trap[0]);
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        rvfi_instr_new_wb_q <= 0;
+      end else begin
+        rvfi_instr_new_wb_q <= rvfi_id_done;
+      end
+    end
+
+    assign rvfi_trap_id = id_stage_i.controller_i.id_exception_o;
+    assign rvfi_trap_wb = id_stage_i.controller_i.exc_req_lsu;
+    // WB is instantly done in the tracking pipeline when a trap is progress through the pipeline
+    assign rvfi_wb_done = instr_done_wb | (rvfi_stage_valid[0] & rvfi_stage_trap[0]);
+
+
+  end else begin : gen_rvfi_no_wb_stage
+
   // Without writeback stage first RVFI stage is output stage so simply valid the cycle after
   // instruction leaves ID/EX (and so has retired)
   assign rvfi_stage_valid_d[0] = rvfi_id_done;
@@ -991,7 +1135,9 @@ module cve2_core import cve2_pkg::*; #(
   // setup register write signals
   assign rvfi_instr_new_wb = instr_new_id;
   assign rvfi_trap_id = id_stage_i.controller_i.exc_req_d | id_stage_i.controller_i.exc_req_lsu;
-
+  assign rvfi_trap_wb = 1'b0;
+  assign rvfi_wb_done = instr_done_wb;
+end
   assign rvfi_stage_order_d = rvfi_stage_order[0] + 64'd1;
 
   // For interrupts and debug Ibex will take the relevant trap as soon as whatever instruction in ID
@@ -1023,30 +1169,30 @@ module cve2_core import cve2_pkg::*; #(
     if (!rst_ni) begin
       captured_valid     <= 1'b0;
       captured_mip       <= '0;
-      captured_irq       <= '0;
+      // captured_irq       <= '0;
       captured_nmi       <= 1'b0;
       captured_debug_req <= 1'b0;
-      captured_debug_cause <= 1'b0;
+      // captured_debug_cause <= 1'b0;
     end else  begin
       // Capture when ID stage has emptied out and something occurs that will cause a trap and we
       // haven't yet captured
       if (~instr_valid_id & (new_debug_req | new_irq | new_nmi) & ~captured_valid) begin
         captured_valid     <= 1'b1;
         captured_nmi       <= irq_nm_i;
-        captured_irq       <= new_irq | new_nmi;
+        // captured_irq       <= new_irq | new_nmi;
         captured_mip       <= cs_registers_i.mip;
         captured_debug_req <= debug_req_i;
       end
 
-      if (debug_csr_save) begin
-        captured_debug_valid <= 1'b1;
-        captured_debug_cause <= debug_cause;
-      end
+      // if (debug_csr_save) begin
+      //   captured_debug_valid <= 1'b1;
+      //   captured_debug_cause <= debug_cause;
+      // end
 
       // Capture cleared out as soon as a new instruction appears in ID
       if (if_stage_i.instr_valid_id_d) begin
         captured_valid <= 1'b0;
-        captured_debug_valid <= 1'b0;
+        // captured_debug_valid <= 1'b0;
       end
     end
   end
@@ -1063,19 +1209,21 @@ module cve2_core import cve2_pkg::*; #(
       rvfi_ext_stage_nmi[0]       <= '0;
       rvfi_ext_stage_debug_req[0] <= '0;
     end else if (if_stage_i.instr_valid_id_d & if_stage_i.instr_new_id_d) begin
-      automatic logic ext_debug_req = instr_valid_id | ~captured_valid ? debug_req_i : captured_debug_req;
+      // automatic logic ext_debug_req = instr_valid_id | ~captured_valid ? debug_req_i : captured_debug_req;
 
       rvfi_ext_stage_mip[0]       <= instr_valid_id | ~captured_valid ? cs_registers_i.mip :
                                                                         captured_mip;
       rvfi_ext_stage_nmi[0]       <= instr_valid_id | ~captured_valid ? irq_nm_i :
                                                                         captured_nmi;
-      rvfi_ext_stage_debug_req[0] <= ext_debug_req;
+      // rvfi_ext_stage_debug_req[0] <= ext_debug_req;
+      rvfi_ext_stage_debug_req[0] <= instr_valid_id | ~captured_valid ? debug_req_i        :
+                                                                        captured_debug_req;
 
     end
-      rvfi_dbg <= (captured_debug_valid) ? captured_debug_cause : 0;
+      // rvfi_dbg <= (captured_debug_valid) ? captured_debug_cause : 0;
   end
 
-  assign rvfi_dbg_mode = debug_mode;
+  // assign rvfi_dbg_mode = debug_mode;
 
   for (genvar i = 0; i < RVFI_STAGES; i = i + 1) begin : g_rvfi_stages
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -1111,19 +1259,21 @@ module cve2_core import cve2_pkg::*; #(
         rvfi_stage_valid[i] <= rvfi_stage_valid_d[i];
 
         if (i == 0) begin
-          if (rvfi_stage_valid_d[i]) begin
+          if (rvfi_id_done) begin
+          // if (rvfi_stage_valid_d[i]) begin
             rvfi_stage_halt[i]      <= '0;
             // TODO: Sort this out for writeback stage
             rvfi_stage_trap[i]            <= rvfi_trap_id;
-            if (rvfi_intr_d) begin
-                if (captured_irq) begin
-                    rvfi_stage_intr[i] <= { cs_registers_i.mcause_q[5:0], 3'b101};
-                end else begin
-                    rvfi_stage_intr[i] <= { cs_registers_i.mcause_q[5:0], 3'b011};
-                end
-            end
-            else
-                rvfi_stage_intr[i] <= 'b000;
+            rvfi_stage_intr[i]            <= rvfi_intr_d;
+            // if (rvfi_intr_d) begin
+            //     if (captured_irq) begin
+            //         rvfi_stage_intr[i] <= { cs_registers_i.mcause_q[5:0], 3'b101};
+            //     end else begin
+            //         rvfi_stage_intr[i] <= { cs_registers_i.mcause_q[5:0], 3'b011};
+            //     end
+            // end
+            // else
+            //     rvfi_stage_intr[i] <= 'b000;
 
             rvfi_stage_order[i]           <= rvfi_stage_order_d;
             rvfi_stage_insn[i]            <= rvfi_insn_id;
@@ -1148,14 +1298,16 @@ module cve2_core import cve2_pkg::*; #(
             rvfi_ext_stage_nmi[i+1]       <= rvfi_ext_stage_nmi[i];
             rvfi_ext_stage_debug_req[i+1] <= rvfi_ext_stage_debug_req[i];
             rvfi_ext_stage_mcycle[i]      <= cs_registers_i.mcycle_counter_i.counter_val_o;
-            rvfi_stage_dbg[i]             <= rvfi_dbg;
-            rvfi_stage_dbg_mode[i]        <= rvfi_dbg_mode;
+            // rvfi_stage_dbg[i]             <= rvfi_dbg;
+            // rvfi_stage_dbg_mode[i]        <= rvfi_dbg_mode;
           end
           else begin
             rvfi_stage_trap[i]            <= 0;
           end
         end else begin
+          if (rvfi_wb_done) begin
             rvfi_stage_halt[i]      <= rvfi_stage_halt[i-1];
+            rvfi_stage_trap[i]      <= rvfi_stage_trap[i-1] | rvfi_trap_wb;
             rvfi_stage_trap[i]      <= rvfi_stage_trap[i-1];
             rvfi_stage_intr[i]      <= rvfi_stage_intr[i-1];
             rvfi_stage_order[i]     <= rvfi_stage_order[i-1];
@@ -1187,6 +1339,7 @@ module cve2_core import cve2_pkg::*; #(
             rvfi_ext_stage_nmi[i+1]       <= rvfi_ext_stage_nmi[i];
             rvfi_ext_stage_debug_req[i+1] <= rvfi_ext_stage_debug_req[i];
             rvfi_ext_stage_mcycle[i]      <= rvfi_ext_stage_mcycle[i-1];
+          end
         end
       end
     end
@@ -1339,9 +1492,11 @@ module cve2_core import cve2_pkg::*; #(
   end
 
 `else
-  logic unused_instr_new_id, unused_instr_id_done;
+  logic unused_instr_new_id, unused_instr_id_done, unused_instr_done_wb;
+  // logic unused_instr_new_id, unused_instr_id_done;
   assign unused_instr_id_done = instr_id_done;
   assign unused_instr_new_id = instr_new_id;
+  assign unused_instr_done_wb = instr_done_wb;
 `endif
 
 endmodule

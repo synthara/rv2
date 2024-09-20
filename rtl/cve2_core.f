@@ -14,4 +14,5 @@ cve2_multdiv_fast.sv
 cve2_prefetch_buffer.sv
 cve2_fetch_fifo.sv
 cve2_register_file_ff.sv
+// cve2_wb_stage.sv
 cve2_core.sv
