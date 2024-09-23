@@ -14,10 +14,10 @@
 `include "prim_assert.sv"
 
 module cve2_decoder #(
-  parameter bit RV32E                = 0,
-  parameter cve2_pkg::rv32m_e RV32M  = cve2_pkg::RV32MFast,
-  parameter cve2_pkg::rv32b_e RV32B  = cve2_pkg::RV32BNone,
-  parameter bit [31:0] COPROC_OPCODE = '0
+  parameter bit               RV32E         = 0,
+  parameter cve2_pkg::rv32m_e RV32M         = cve2_pkg::RV32MFast,
+  parameter cve2_pkg::rv32b_e RV32B         = cve2_pkg::RV32BNone,
+  parameter bit [31:0]        COPROC_OPCODE = '0
 ) (
   input  logic                  clk_i,
   input  logic                  rst_ni,
@@ -26,7 +26,7 @@ module cve2_decoder #(
   output logic                  illegal_insn_o,        // illegal instr encountered
   output logic                  ebrk_insn_o,           // trap instr encountered
   output logic                  mret_insn_o,           // return from exception instr
-                                                      // encountered
+                                                       // encountered
   output logic                  dret_insn_o,           // return from debug instr encountered
   output logic                  ecall_insn_o,          // syscall instr encountered
   output logic                  wfi_insn_o,            // wait for interrupt instr encountered
@@ -36,7 +36,7 @@ module cve2_decoder #(
   input  logic                  instr_first_cycle_i,   // instruction read is in its first cycle
   input  logic [31:0]           instr_rdata_i,         // instruction read from memory/cache
   input  logic [31:0]           instr_rdata_alu_i,     // instruction read from memory/cache
-                                                      // replicated to ease fan-out)
+                                                       // replicated to ease fan-out)
 
   input  logic                  illegal_c_insn_i,      // compressed instruction decode failed
 
@@ -49,6 +49,14 @@ module cve2_decoder #(
   output logic [31:0]           imm_u_type_o,
   output logic [31:0]           imm_j_type_o,
   output logic [31:0]           zimm_rs1_type_o,
+
+
+
+//--------------------------------------------------------------------------------- 
+  output logic [31:0]           imm_iz_type_o,
+//---------------------------------------------------------------------------------
+
+
 
   // register file
   output cve2_pkg::rf_wd_sel_e rf_wdata_sel_o,   // RF write data selection
@@ -129,8 +137,21 @@ module cve2_decoder #(
                                                       // memory
 
 
+
 //---------------------------------------------------------------------------------
-  output logic                 lsu_addr_mux_sel_o, //This signal indicates if the memory address is the one calulated in the ALU or rs1.
+  // Hardware Loop operations.
+  output logic[1:0]            hwlp_start_mux_sel_o, // HWLP start address mux sel.
+  output logic[1:0]            hwlp_end_mux_sel_o,   // HWLP end address mux sel.
+  output logic                 hwlp_cnt_mux_sel_o,   // HWLP counter address mux sel.
+  output logic[2:0]            hwlp_we_o,            // HWLP reg write enable signals.
+//---------------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------------
+  //Post-Increment Load&Store operations.
+  output logic                 instr_post_incr_valid_o, // This signal indicates if the instruction is a Post-Increment Load&Store Instruction.
+  output logic                 lsu_addr_mux_sel_o,      // This signal indicates if the memory address is the one calulated in the ALU or rs1.
 //---------------------------------------------------------------------------------
 
 
@@ -142,8 +163,6 @@ module cve2_decoder #(
   output logic                 coproc_instr_valid_o,
 //---------------------------------------------------------------------------------                                                      
 
-
-  output logic instr_post_incr_valid_o,
 
 
   // jump/branches
@@ -211,6 +230,14 @@ module cve2_decoder #(
   assign imm_b_type_o = { {19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0 };
   assign imm_u_type_o = { instr[31:12], 12'b0 };
   assign imm_j_type_o = { {12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0 };
+
+
+
+//---------------------------------------------------------------------------------
+  assign imm_iz_type_o = {20'b0, instr[31:20]}; // Needed for Hardware Loop operations.
+//---------------------------------------------------------------------------------
+
+
 
   // immediate for CSR manipulation (zero extended)
   assign zimm_rs1_type_o = { 27'b0, instr_rs1 }; // rs1
@@ -295,67 +322,68 @@ module cve2_decoder #(
   /////////////
 
   always_comb begin
-    jump_in_dec_o         = 1'b0;
-    jump_set_o            = 1'b0;
-    branch_in_dec_o       = 1'b0;
+    jump_in_dec_o           = 1'b0;
+    jump_set_o              = 1'b0;
+    branch_in_dec_o         = 1'b0;
 
-    multdiv_operator_o    = MD_OP_MULL;
-    multdiv_signed_mode_o = 2'b00;
+    multdiv_operator_o      = MD_OP_MULL;
+    multdiv_signed_mode_o   = 2'b00;
 
-    rf_wdata_sel_o        = RF_WD_EX;
-    rf_we_a               = 1'b0;
-
-
-
-//---------------------------------------------------------------------------------
-    rf_we_b_d              = 1'b0;
-//---------------------------------------------------------------------------------
-
-
-
-    rf_ren_a_o            = 1'b0;
-    rf_ren_b_o            = 1'b0;
+    rf_wdata_sel_o          = RF_WD_EX;
+    rf_we_a                 = 1'b0;
 
 
 
 //---------------------------------------------------------------------------------
-    rf_ren_c_o            = 1'b0;
+    rf_we_b_d               = 1'b0;
 //---------------------------------------------------------------------------------
 
 
 
-    csr_access_o          = 1'b0;
-    csr_illegal           = 1'b0;
-    csr_op                = CSR_OP_READ;
-
-    data_we_o             = 1'b0;
-    data_type_o           = 2'b00;
-    data_sign_extension_o = 1'b0;
-    data_req_o            = 1'b0;
+    rf_ren_a_o              = 1'b0;
+    rf_ren_b_o              = 1'b0;
 
 
 
 //---------------------------------------------------------------------------------
-    lsu_addr_mux_sel_o    = 1'b0;
+    rf_ren_c_o              = 1'b0;
 //---------------------------------------------------------------------------------
 
 
 
+    csr_access_o            = 1'b0;
+    csr_illegal             = 1'b0;
+    csr_op                  = CSR_OP_READ;
+
+    data_we_o               = 1'b0;
+    data_type_o             = 2'b00;
+    data_sign_extension_o   = 1'b0;
+    data_req_o              = 1'b0;
+
+
+
 //---------------------------------------------------------------------------------
-    coproc_instr_valid_o  = 1'b0;
+    coproc_instr_valid_o    = 1'b0;
+
+    instr_post_incr_valid_o = 1'b0;
+    lsu_addr_mux_sel_o      = 1'b0;
+
+    hwlp_start_mux_sel_o    = '0;
+    hwlp_end_mux_sel_o      = '0;
+    hwlp_cnt_mux_sel_o      = '0;
+    hwlp_we_o               = '0;
 //---------------------------------------------------------------------------------
 
-  instr_post_incr_valid_o = 1'b0;
 
 
-    illegal_insn          = 1'b0;
-    ebrk_insn_o           = 1'b0;
-    mret_insn_o           = 1'b0;
-    dret_insn_o           = 1'b0;
-    ecall_insn_o          = 1'b0;
-    wfi_insn_o            = 1'b0;
+    illegal_insn            = 1'b0;
+    ebrk_insn_o             = 1'b0;
+    mret_insn_o             = 1'b0;
+    dret_insn_o             = 1'b0;
+    ecall_insn_o            = 1'b0;
+    wfi_insn_o              = 1'b0;
 
-    opcode                = opcode_e'(instr[6:0]);
+    opcode                  = opcode_e'(instr[6:0]);
 
     unique case (opcode)
 
@@ -768,7 +796,7 @@ module cve2_decoder #(
       ////////////
 
       // Post-increment Register-Immediate Load operations.
-      OPCODE_POST_INCR_FIRST_SET: begin 
+      OPCODE_CUSTOM_0: begin 
         if(instr[14:13] != 2'b11) begin
           data_req_o = 1'b1; // Request to LSU.
           rf_ren_a_o = 1'b1; // Enable read from register file port 1.
@@ -791,22 +819,16 @@ module cve2_decoder #(
         endcase
       end
 
-      // Post-Increment Register-Register Load operations.
-      // Register-register Load operations.
-      // Post-Increment Register-Immediate Store operations.
-      // Post-increment Register-Register Store operations.
-      // Register-Register Store operations.
-      OPCODE_POST_INCR_SECOND_SET: begin 
-        
+      OPCODE_CUSTOM_1: begin 
         unique case (instr[14:12])
           3'b000, 3'b001, 3'b010: begin // Post-Increment Register-Immediate Store operations.
             instr_post_incr_valid_o = 1'b1;
-            data_req_o         = 1'b1;  // Request to LSU.
-            rf_ren_a_o         = 1'b1;  // Enable read from register file port 1.
-            rf_ren_b_o         = 1'b1;  // Enable read from register file port 1.
-            data_we_o          = 1'b1;  // Enable write to memory.
-            lsu_addr_mux_sel_o = 1'b1;  // Select rs1 to address the memory.
-            rf_we_b_d          = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
+            data_req_o              = 1'b1;  // Request to LSU.
+            rf_ren_a_o              = 1'b1;  // Enable read from register file port 1.
+            rf_ren_b_o              = 1'b1;  // Enable read from register file port 1.
+            data_we_o               = 1'b1;  // Enable write to memory.
+            lsu_addr_mux_sel_o      = 1'b1;  // Select rs1 to address the memory.
+            rf_we_b_d               = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
     
             // Store size.
             unique case (instr[13:12])
@@ -820,15 +842,15 @@ module cve2_decoder #(
                 data_type_o = 2'b00; // sw
               end
               default: begin
-                data_req_o         = 1'b0;  
-                rf_ren_a_o         = 1'b0;  
-                rf_ren_a_o         = 1'b0;
-                data_we_o          = 1'b0;  
-                lsu_addr_mux_sel_o = 1'b0;  
-                rf_we_b_d          = 1'b0; 
-                data_type_o        = 2'b00;
+                data_req_o              = 1'b0;  
+                rf_ren_a_o              = 1'b0;  
+                rf_ren_b_o              = 1'b0;
+                data_we_o               = 1'b0;  
+                lsu_addr_mux_sel_o      = 1'b0;  
+                rf_we_b_d               = 1'b0; 
+                data_type_o             = '0;
                 instr_post_incr_valid_o = 1'b0;
-                illegal_insn       = 1'b1;
+                illegal_insn            = 1'b1;
               end
             endcase
           end
@@ -844,8 +866,8 @@ module cve2_decoder #(
                   
                   if(instr[27] == 1'b0) begin
                     instr_post_incr_valid_o = 1'b1;
-                    lsu_addr_mux_sel_o = 1'b1; // Select rs1 to address the memory.
-                    rf_we_b_d          = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=rs2).
+                    lsu_addr_mux_sel_o      = 1'b1; // Select rs1 to address the memory.
+                    rf_we_b_d               = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=rs2).
                   end
                                  
                   // Sign/zero extension.
@@ -859,14 +881,14 @@ module cve2_decoder #(
                     3'b100 : data_type_o = 2'b10; // lbu
                     3'b101 : data_type_o = 2'b01; // lhu
                     default: begin
-                      data_req_o         = 1'b0; 
-                      rf_ren_a_o         = 1'b0; 
-                      rf_ren_b_o         = 1'b0;  
-                      lsu_addr_mux_sel_o = 1'b0; 
-                      rf_we_b_d          = 1'b0; 
-                      data_type_o        = 2'b00;
+                      data_req_o              = 1'b0; 
+                      rf_ren_a_o              = 1'b0; 
+                      rf_ren_b_o              = 1'b0;  
+                      lsu_addr_mux_sel_o      = 1'b0; 
+                      rf_we_b_d               = 1'b0; 
+                      data_type_o             = 2'b00;
                       instr_post_incr_valid_o = 1'b0;
-                      illegal_insn       = 1'b1;
+                      illegal_insn            = 1'b1;
                     end
                   endcase
                 end
@@ -891,25 +913,33 @@ module cve2_decoder #(
                     2'b01  : data_type_o = 2'b01; // sh
                     2'b10  : data_type_o = 2'b00; // sw
                     default: begin
-                      data_req_o         = 1'b0;  
-                      rf_ren_a_o         = 1'b0; 
-                      rf_ren_c_o         = 1'b0; 
-                      data_we_o          = 1'b0;   
-                      lsu_addr_mux_sel_o = 1'b0;  
-                      rf_we_b_d          = 1'b0;  
-                      data_type_o        = 2'b00;
+                      data_req_o              = 1'b0;  
+                      rf_ren_a_o              = 1'b0; 
+                      rf_ren_c_o              = 1'b0; 
+                      data_we_o               = 1'b0;   
+                      lsu_addr_mux_sel_o      = 1'b0;  
+                      rf_we_b_d               = 1'b0;  
+                      data_type_o             = 2'b00;
                       instr_post_incr_valid_o = 1'b0;
-                      illegal_insn       = 1'b1;
+                      illegal_insn            = 1'b1;
                     end
                   endcase
                 end
 
                 default: begin
-                  illegal_insn       = 1'b1;
+                    data_req_o              = 1'b0;  
+                    rf_ren_a_o              = 1'b0; 
+                    rf_ren_c_o              = 1'b0; 
+                    data_we_o               = 1'b0;   
+                    lsu_addr_mux_sel_o      = 1'b0;  
+                    rf_we_b_d               = 1'b0;  
+                    data_type_o             = 2'b00;
+                    instr_post_incr_valid_o = 1'b0;
+                    illegal_insn            = 1'b1;
 
 
 
-//---------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------
                     for(int i = 0; i < 32; i++) begin
                       if(COPROC_OPCODE[i] && (instr[6:2] == i)) begin
                         coproc_instr_valid_o = 1'b1;
@@ -921,43 +951,142 @@ module cve2_decoder #(
                         illegal_insn       = 1'b0;
                       end
                     end
-//---------------------------------------------------------------------------------
+            //---------------------------------------------------------------------------------
 
 
 
-                end
+              end
             endcase
           end
 
+          3'b100 : begin 
+            unique case (instr[11:8])
+              4'b0000: begin
+                // cv.starti: set start address to PC + (uimmL << 2)
+                hwlp_we_o[0]         = 1'b1;    //Reg hwlp start write enable. ( 0: start, 1: end, 2: counter)
+                hwlp_start_mux_sel_o = 2'b0;    //Start address mux sel. 
+                if (instr[19:15] != 5'b0) begin
+                  illegal_insn = 1'b1;
+                end
+              end
+              4'b0001: begin
+                // cv.start: set start address to rs1 content
+                hwlp_we_o[0]         = 1'b1;
+                hwlp_start_mux_sel_o = 2'b10;
+                if (instr[31:20] != 12'b0) begin
+                  illegal_insn = 1'b1;
+                end
+              end
+              4'b0010: begin
+                // cv.endi: set end address to PC + (uimmL << 2)
+                hwlp_we_o[1]       = 1'b1;
+                hwlp_end_mux_sel_o = 2'b0;
+                if (instr[19:15] != 5'b0) begin
+                  illegal_insn = 1'b1;
+                end
+              end
+              4'b0011: begin
+                // cv.end: set end address to rs1
+                hwlp_we_o[1]       = 1'b1;
+                hwlp_end_mux_sel_o = 2'b10;
+                if (instr[31:20] != 12'b0) begin
+                  illegal_insn = 1'b1;
+                end
+              end
+              4'b0100: begin
+                // cv.counti: initialize counter to uimmL
+                hwlp_we_o[2]       = 1'b1;
+                hwlp_cnt_mux_sel_o = 1'b0;
+                if (instr[19:15] != 5'b0) begin
+                  illegal_insn = 1'b1;
+                end
+              end
+              4'b0101: begin
+                // cv.count: initialize to rs1 content
+                hwlp_we_o[2]       = 1'b1;
+                hwlp_cnt_mux_sel_o = 1'b1;
+                if (instr[31:20] != 12'b0) begin
+                  illegal_insn = 1'b1;
+                end
+              end
+              4'b0110: begin
+                // cv.setupi: initialize counter from immediate, set start address to
+                // next instruction and end address to PC + I-type immediate - 4
+                hwlp_we_o             = '1;
+                hwlp_start_mux_sel_o  = 2'b01;
+                hwlp_end_mux_sel_o    = 2'b01;
+                hwlp_cnt_mux_sel_o    = 1'b0;
+              end
+              4'b0111: begin
+                // lp.setup: initialize counter from rs1, set start address to
+                // next instruction and end address to PC + I-type immediate - 4
+                hwlp_we_o            = '1;
+                hwlp_start_mux_sel_o = 2'b01;
+                hwlp_cnt_mux_sel_o   = 1'b1;
+              end
+              default: begin
+                hwlp_start_mux_sel_o = '0;
+                hwlp_end_mux_sel_o   = '0;
+                hwlp_cnt_mux_sel_o   = '0;
+                hwlp_we_o            = '0;
+                illegal_insn         = 1'b1;
+              end
+            endcase
+          end // Plane B
+
           default: begin
-            data_req_o         = 1'b0;  
-            rf_ren_a_o         = 1'b0;
-            rf_ren_b_o         = 1'b0; 
-            rf_ren_c_o         = 1'b0; 
-            rf_we_a            = 1'b0;
-            rf_we_b_d          = 1'b0;  
-            data_we_o          = 1'b0;  
-            lsu_addr_mux_sel_o = 1'b0;  
-            data_type_o        = 2'b00;
-            illegal_insn       = 1'b1;
+            data_req_o           = 1'b0;  
+            rf_ren_a_o           = 1'b0;
+            rf_ren_b_o           = 1'b0; 
+            rf_ren_c_o           = 1'b0; 
+            rf_we_a              = 1'b0;
+            rf_we_b_d            = 1'b0;  
+            data_we_o            = 1'b0;  
+            lsu_addr_mux_sel_o   = 1'b0;  
+            data_type_o          = '0;
+            hwlp_start_mux_sel_o = '0;
+            hwlp_end_mux_sel_o   = '0;
+            hwlp_cnt_mux_sel_o   = '0;
+            hwlp_we_o            = '0;
+            illegal_insn         = 1'b1;
           end
         endcase
       end
+
+      default: begin
+        illegal_insn = 1'b1;
+        data_req_o           = 1'b0;  
+        rf_ren_a_o           = 1'b0;
+        rf_ren_b_o           = 1'b0; 
+        rf_ren_c_o           = 1'b0; 
+        rf_we_a              = 1'b0;
+        rf_we_b_d            = 1'b0;  
+        data_we_o            = 1'b0;  
+        lsu_addr_mux_sel_o   = 1'b0;  
+        data_type_o          = '0;
+        hwlp_start_mux_sel_o = '0;
+        hwlp_end_mux_sel_o   = '0;
+        hwlp_cnt_mux_sel_o   = '0;
+        hwlp_we_o            = '0;
+
+
+
+//---------------------------------------------------------------------------------
+        for(int i = 0; i < 32; i++) begin
+          if(COPROC_OPCODE[i] && (instr[6:2] == i)) begin
+            coproc_instr_valid_o = 1'b1;
+            rf_ren_a_o         = xif_issue_resp_register_read_i[0];     
+            rf_ren_b_o         = xif_issue_resp_register_read_i[1];      
+            rf_ren_c_o         = xif_issue_resp_register_read_i[2];      
+            rf_we_a            = xif_issue_resp_writeback_i;                          
+            rf_wdata_sel_o     = RF_WD_COPROC;
+            illegal_insn       = 1'b0;
+          end
+        end
 //---------------------------------------------------------------------------------
 
 
 
-      default: begin
-        data_req_o         = 1'b0;  
-        rf_ren_a_o         = 1'b0;
-        rf_ren_b_o         = 1'b0; 
-        rf_ren_c_o         = 1'b0; 
-        rf_we_a            = 1'b0;
-        rf_we_b_d          = 1'b0;  
-        data_we_o          = 1'b0;  
-        lsu_addr_mux_sel_o = 1'b0;   
-        data_type_o        = 2'b00;
-        illegal_insn = 1'b1;
       end
     endcase
 
@@ -1489,7 +1618,7 @@ module cve2_decoder #(
       /////////////
       // Custom //
       /////////////
-      OPCODE_POST_INCR_FIRST_SET: begin
+      OPCODE_CUSTOM_0: begin
         alu_operator_o     = ALU_ADD; //rs1 += Sext(Imm[11:0])
         alu_op_a_mux_sel_o = OP_A_REG_A; 
         alu_op_b_mux_sel_o = OP_B_IMM;
@@ -1497,7 +1626,7 @@ module cve2_decoder #(
       end
 
 
-      OPCODE_POST_INCR_SECOND_SET: begin
+      OPCODE_CUSTOM_1: begin
         alu_op_a_mux_sel_o = OP_A_REG_A;
 
         unique case (instr[14:12])

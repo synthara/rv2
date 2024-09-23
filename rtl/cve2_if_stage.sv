@@ -72,7 +72,18 @@ module cve2_if_stage import cve2_pkg::*; #(
   input  logic                        id_in_ready_i,            // ID stage is ready for new instr
 
   // misc signals
-  output logic                        if_busy_o                 // IF stage is busy fetching instr
+  output logic                        if_busy_o,                 // IF stage is busy fetching instr
+
+
+
+//---------------------------------------------------------------------------------
+  // Hardware Loop start address.
+  input [31:0]                      hwlp0_start_i,
+  input [31:0]                      hwlp1_start_i
+//---------------------------------------------------------------------------------
+
+
+
 );
 
   logic              instr_valid_id_d, instr_valid_id_q;
@@ -132,17 +143,25 @@ module cve2_if_stage import cve2_pkg::*; #(
   assign pc_mux_internal =
     pc_mux_i;
 
+
+
+//---------------------------------------------------------------------------------
   // fetch address selection mux
   always_comb begin : fetch_addr_mux
     unique case (pc_mux_internal)
-      PC_BOOT: fetch_addr_n = { boot_addr_i[31:8], 8'h00 };
-      PC_JUMP: fetch_addr_n = branch_target_ex_i;
-      PC_EXC:  fetch_addr_n = exc_pc;                       // set PC to exception handler
-      PC_ERET: fetch_addr_n = csr_mepc_i;                   // restore PC when returning from EXC
-      PC_DRET: fetch_addr_n = csr_depc_i;
-      default: fetch_addr_n = { boot_addr_i[31:8], 8'h00 };
+      PC_BOOT:  fetch_addr_n = { boot_addr_i[31:8], 8'h00 };
+      PC_JUMP:  fetch_addr_n = branch_target_ex_i;
+      PC_EXC:   fetch_addr_n = exc_pc;                       // set PC to exception handler
+      PC_ERET:  fetch_addr_n = csr_mepc_i;                   // restore PC when returning from EXC
+      PC_DRET:  fetch_addr_n = csr_depc_i;
+      PC_HWLP0: fetch_addr_n = hwlp0_start_i;
+      PC_HWLP1: fetch_addr_n = hwlp1_start_i;
+      default:  fetch_addr_n = { boot_addr_i[31:8], 8'h00 };
     endcase
   end
+//---------------------------------------------------------------------------------
+
+
 
   // tell CS register file to initialize mtvec on boot
   assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;

@@ -11,6 +11,8 @@
 `include "dv_fcov_macros.svh"
 
 module cve2_controller #(
+  parameter                   N_HWLP      = 2,
+  parameter                   N_HWLP_BITS = $clog2(N_HWLP)
  ) (
   input  logic                  clk_i,
   input  logic                  rst_ni,
@@ -94,8 +96,20 @@ module cve2_controller #(
   // performance monitors
   output logic                  perf_jump_o,             // we are executing a jump
                                                          // instruction (j, jr, jal, jalr)
-  output logic                  perf_tbranch_o           // we are executing a taken branch
+  output logic                  perf_tbranch_o,           // we are executing a taken branch
                                                          // instruction
+
+
+
+  //---------------------------------------------------------------------------------
+  // Hardware Loop signals.
+  input logic  [N_HWLP-1:0][31:0] hwlp_end_i,
+  input logic  [N_HWLP-1:0][31:0] hwlp_cnt_i,
+  output logic [N_HWLP-1:0]       hwlp_dec_cnt_o
+  //---------------------------------------------------------------------------------
+
+
+
 );
   import cve2_pkg::*;
 
@@ -315,6 +329,49 @@ module cve2_controller #(
   // Core controller //
   /////////////////////
 
+
+
+//---------------------------------------------------------------------------------
+  //Hardware Loop control.
+  logic hwlp0_end, hwlp0_cnt, hwlp1_end, hwlp1_cnt;
+  assign hwlp0_end = hwlp_end_i[0];
+  assign hwlp0_cnt = hwlp_cnt_i[0];
+  assign hwlp1_end = hwlp_end_i[1];
+  assign hwlp1_cnt = hwlp_cnt_i[1];
+
+  logic hwlp0_end_eq_pc,   hwlp1_end_eq_pc;
+  logic hwlp0_cnt_ge_zero, hwlp1_cnt_ge_zero;
+  assign hwlp0_end_eq_pc   = (hwlp0_end == pc_id_i + 4);
+  assign hwlp1_end_eq_pc   = (hwlp1_end == pc_id_i + 4);
+  assign hwlp0_cnt_ge_zero = (hwlp0_cnt >= 0);
+  assign hwlp1_cnt_ge_zero = (hwlp1_cnt >= 0);
+
+  logic hwlp0_jump, hwlp1_jump;
+
+  always_comb begin
+    if(hwlp0_end_eq_pc && hwlp0_cnt_ge_zero) begin
+      hwlp0_jump        = 1'b1;
+      hwlp_dec_cnt_o[0] = 1'b1;
+    end else begin
+      hwlp0_jump        = 1'b0;
+      hwlp_dec_cnt_o[0] = 1'b0;
+    end
+  end
+
+  always_comb begin
+    if(hwlp1_end_eq_pc && hwlp1_cnt_ge_zero) begin
+      hwlp1_jump        = 1'b1;
+      hwlp_dec_cnt_o[1] = 1'b1;
+    end else begin
+      hwlp1_jump        = 1'b0;
+      hwlp_dec_cnt_o[1] = 1'b0;
+    end
+  end
+//---------------------------------------------------------------------------------
+
+
+
+
   always_comb begin
     // Default values
     instr_req_o           = 1'b1;
@@ -450,11 +507,19 @@ module cve2_controller #(
           ctrl_fsm_ns = FLUSH;
         end
 
-        if (branch_set_i || jump_set_i) begin
+        if (branch_set_i || jump_set_i || hwlp0_jump || hwlp1_jump) begin
           pc_set_o       = 1'b1;
 
+          if(hwlp0_jump) begin
+            pc_mux_o = PC_HWLP0;
+          end
+
+          if(hwlp1_jump) begin
+            pc_mux_o = PC_HWLP1;
+          end
+
           perf_tbranch_o = branch_set_i;
-          perf_jump_o    = jump_set_i;
+          perf_jump_o    = jump_set_i || hwlp0_jump || hwlp1_jump;
         end
 
         // If entering debug mode or handling an IRQ the core needs to wait until any instruction in

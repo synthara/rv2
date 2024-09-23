@@ -50,19 +50,19 @@ package cve2_pkg;
   /////////////
 
   typedef enum logic [6:0] {
-    OPCODE_LOAD                 = 7'h03,
-    OPCODE_MISC_MEM             = 7'h0f,
-    OPCODE_OP_IMM               = 7'h13,
-    OPCODE_AUIPC                = 7'h17,
-    OPCODE_STORE                = 7'h23,
-    OPCODE_OP                   = 7'h33,
-    OPCODE_LUI                  = 7'h37,
-    OPCODE_BRANCH               = 7'h63,
-    OPCODE_JALR                 = 7'h67,
-    OPCODE_JAL                  = 7'h6f,
-    OPCODE_SYSTEM               = 7'h73,
-    OPCODE_POST_INCR_FIRST_SET  = 7'h0b,
-    OPCODE_POST_INCR_SECOND_SET = 7'h2b
+    OPCODE_LOAD     = 7'h03,
+    OPCODE_MISC_MEM = 7'h0f,
+    OPCODE_OP_IMM   = 7'h13,
+    OPCODE_AUIPC    = 7'h17,
+    OPCODE_STORE    = 7'h23,
+    OPCODE_OP       = 7'h33,
+    OPCODE_LUI      = 7'h37,
+    OPCODE_BRANCH   = 7'h63,
+    OPCODE_JALR     = 7'h67,
+    OPCODE_JAL      = 7'h6f,
+    OPCODE_SYSTEM   = 7'h73,
+    OPCODE_CUSTOM_0 = 7'h0b,
+    OPCODE_CUSTOM_1 = 7'h2b
   } opcode_e;
 
 
@@ -294,7 +294,9 @@ package cve2_pkg;
     PC_EXC,
     PC_ERET,
     PC_DRET,
-    PC_BP
+    PC_BP,
+    PC_HWLP0,
+    PC_HWLP1
   } pc_sel_e;
 
   // Exception PC mux selection

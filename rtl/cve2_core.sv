@@ -243,6 +243,12 @@ module cve2_core import cve2_pkg::*; #(
 
 
 
+//---------------------------------------------------------------------------------
+ logic [31:0] hwlp0_start, hwlp1_start ;
+//---------------------------------------------------------------------------------
+
+
+
   logic [31:0] alu_adder_result_ex;    // Used to forward computed address to LSU
   logic [31:0] result_ex;
 
@@ -405,7 +411,17 @@ module cve2_core import cve2_pkg::*; #(
     // pipeline stalls
     .id_in_ready_i(id_in_ready),
 
-    .if_busy_o          (if_busy)
+    .if_busy_o          (if_busy),
+
+
+
+//---------------------------------------------------------------------------------
+    .hwlp0_start_i(hwlp0_start),
+    .hwlp1_start_i(hwlp1_start)
+//---------------------------------------------------------------------------------
+
+
+
   );
 
   // Core is waiting for the ISide when ID/EX stage is ready for a new instruction but none are
@@ -421,10 +437,21 @@ module cve2_core import cve2_pkg::*; #(
   // ID stage //
   //////////////
 
+
+
+//---------------------------------------------------------------------------------
+  localparam int unsigned N_HWLP = 2;
+  localparam int unsigned COPROC_OPCODE = 32'h00400400;
+//---------------------------------------------------------------------------------
+
+
+
   cve2_id_stage #(
     .RV32E          (RV32E),
     .RV32M          (RV32M),
-    .RV32B          (RV32B)
+    .RV32B          (RV32B),
+    .N_HWLP         (N_HWLP),
+    .COPROC_OPCODE  (COPROC_OPCODE)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -509,17 +536,27 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_sign_ext_o(lsu_sign_ext),  // to load store unit
     .lsu_wdata_o   (lsu_wdata),  // to load store unit
 
+  
+  
+//---------------------------------------------------------------------------------
+    .instr_post_incr_valid_o(instr_post_incr_valid),
+    .lsu_addr_mux_sel_o(lsu_addr_mux_sel),
+//---------------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------------
+    .hwlp0_start_o(hwlp0_start),
+    .hwlp1_start_o(hwlp1_start),
+//---------------------------------------------------------------------------------
+
+
+
     .lsu_addr_incr_req_i(lsu_addr_incr_req),
     .lsu_addr_last_i    (lsu_addr_last),
 
     .lsu_load_err_i (lsu_load_err),
     .lsu_store_err_i(lsu_store_err),
-
-
-
-//---------------------------------------------------------------------------------
-    .lsu_addr_mux_sel_o(lsu_addr_mux_sel),
-//---------------------------------------------------------------------------------
 
 
 
@@ -598,8 +635,7 @@ module cve2_core import cve2_pkg::*; #(
     .rf_wdata_b_id_o(rf_wdata_b_id),
     .rf_we_b_id_o   (rf_we_b_id),
 //---------------------------------------------------------------------------------
-
-    .instr_post_incr_valid_o(instr_post_incr_valid),
+    
 
     .en_wb_o           (en_wb),
     .instr_perf_count_id_o (instr_perf_count_id),

@@ -18,10 +18,12 @@
 `include "dv_fcov_macros.svh"
 
 module cve2_id_stage #(
-  parameter bit               RV32E  = 0,
-  parameter cve2_pkg::rv32m_e RV32M  = cve2_pkg::RV32MFast,
-  parameter cve2_pkg::rv32b_e RV32B  = cve2_pkg::RV32BNone,
-  parameter bit [31:0] COPROC_OPCODE = 32'h00400400
+  parameter bit               RV32E       = 0,
+  parameter cve2_pkg::rv32m_e RV32M       = cve2_pkg::RV32MFast,
+  parameter cve2_pkg::rv32b_e RV32B       = cve2_pkg::RV32BNone,
+  parameter                   N_HWLP      = 2,
+  parameter                   N_HWLP_BITS = $clog2(N_HWLP),
+  parameter bit [31:0]        COPROC_OPCODE = 32'h00400400
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -111,7 +113,17 @@ module cve2_id_stage #(
 
 
 //---------------------------------------------------------------------------------
+  //Signals needed for Post-Increment Load&Store operations.
+  output logic                      instr_post_incr_valid_o,
   output logic                      lsu_addr_mux_sel_o,
+//---------------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------------
+  // Signal needed for Hardware Loop operations.
+  output logic[31:0] hwlp0_start_o, // To IF stage.
+  output logic[31:0] hwlp1_start_o,
 //---------------------------------------------------------------------------------
 
 
@@ -209,7 +221,6 @@ module cve2_id_stage #(
   output logic                      rf_we_b_id_o,
 //---------------------------------------------------------------------------------
 
-  output logic instr_post_incr_valid_o,
 
 
   output  logic                     en_wb_o,
@@ -272,6 +283,14 @@ module cve2_id_stage #(
   logic [31:0] imm_u_type;
   logic [31:0] imm_j_type;
   logic [31:0] zimm_rs1_type;
+
+
+
+//---------------------------------------------------------------------------------
+  logic [31:0] imm_iz_type;
+//---------------------------------------------------------------------------------
+
+
 
   logic [31:0] imm_a;       // contains the immediate for operand b
   logic [31:0] imm_b;       // contains the immediate for operand b
@@ -479,6 +498,92 @@ module cve2_id_stage #(
 
 
 
+//---------------------------------------------------------------------------------
+  // Hardware Loop.
+
+  // Intermediate signals,
+  // hwloop_regs input signals.
+  logic [1:0]               hwlp_start_mux_sel;
+  logic [31:0]              hwlp_start_d;
+  logic [1:0]               hwlp_end_mux_sel;
+  logic [31:0]              hwlp_end_d;
+  logic                     hwlp_cnt_mux_sel;
+  logic [31:0]              hwlp_cnt_d;
+  logic [2:0]               hwlp_we;
+  logic                     hwlp_regid;
+
+  // hwloops_regs output signals.
+  logic [N_HWLP-1:0][31:0]  hwlp_start_q; // To IF stage.
+  logic [N_HWLP-1:0][31:0]  hwlp_end_q;   // To controller.
+  logic [N_HWLP-1:0][31:0]  hwlp_cnt_q;   // 
+
+  assign hwlp0_start_o = hwlp_start_q[0];
+  assign hwlp1_start_o = hwlp_start_q[1];
+
+  // Counter enable (from controller to hwloop_regs)
+  logic[N_HWLP-1:0]         hwlp_dec_cnt; 
+
+  //Start address.
+  always_comb begin
+    case (hwlp_start_mux_sel)
+      2'b00:   hwlp_start_d = hwlp_end_d;  
+      2'b01:   hwlp_start_d = pc_id_i + 4;  
+      2'b10:   hwlp_start_d = rf_rdata_a_fwd;
+      default: hwlp_start_d = rf_rdata_a_fwd;
+    endcase
+  end
+
+  //End address.
+  always_comb begin
+    case (hwlp_end_mux_sel)
+      2'b00:   hwlp_end_d = pc_id_i + {imm_iz_type[29:0], 2'b0};
+      2'b01:   hwlp_end_d = pc_id_i + {zimm_rs1_type[29:0], 2'b0};
+      2'b10:   hwlp_end_d = rf_rdata_a_fwd;
+      default: hwlp_end_d = rf_rdata_a_fwd;
+    endcase
+  end
+
+  //Counter value.
+  always_comb begin : hwlp_cnt_mux
+    case (hwlp_cnt_mux_sel)
+      1'b0: hwlp_cnt_d = imm_iz_type;
+      1'b1: hwlp_cnt_d = rf_rdata_a_fwd;
+    endcase
+    ;
+  end
+
+  assign hwlp_regid = instr_rdata_i[7];
+
+  cve2_hwloop_regs #(
+    .N_REGS(N_HWLP)
+  )
+  cve2_hwloop_regs_i (
+    .clk(clk_i),
+    .rst_n(rst_ni),
+
+
+    .hwlp_start_data_i(hwlp_start_d),
+    .hwlp_end_data_i  (hwlp_end_d),
+    .hwlp_cnt_data_i  (hwlp_cnt_d),
+    .hwlp_we_i        (hwlp_we),
+    .hwlp_regid_i     (hwlp_regid),  
+
+
+    .valid_i(instr_valid_i),
+
+
+    .hwlp_dec_cnt_i(hwlp_dec_cnt), 
+
+
+    .hwlp_start_addr_o(hwlp_start_q),
+    .hwlp_end_addr_o  (hwlp_end_q),
+    .hwlp_counter_o   (hwlp_cnt_q)
+  );
+
+//---------------------------------------------------------------------------------
+
+
+
   /////////////////////////////////////////
   // Multicycle Operation Stage Register //
   /////////////////////////////////////////
@@ -565,6 +670,7 @@ module cve2_id_stage #(
     .imm_u_type_o   (imm_u_type),
     .imm_j_type_o   (imm_j_type),
     .zimm_rs1_type_o(zimm_rs1_type),
+    .imm_iz_type_o  (imm_iz_type),
 
     // register file
     .rf_wdata_sel_o(rf_wdata_sel),
@@ -643,20 +749,29 @@ module cve2_id_stage #(
 
 
 //---------------------------------------------------------------------------------
+    .hwlp_start_mux_sel_o(hwlp_start_mux_sel), 
+    .hwlp_end_mux_sel_o  (hwlp_end_mux_sel),   
+    .hwlp_cnt_mux_sel_o  (hwlp_cnt_mux_sel),   
+    .hwlp_we_o           (hwlp_we),            
+//---------------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------------
+    .instr_post_incr_valid_o(instr_post_incr_valid_o),
     .lsu_addr_mux_sel_o(lsu_addr_mux_sel_o), 
 //---------------------------------------------------------------------------------
 
 
 
 //---------------------------------------------------------------------------------
-    // Coprocessor
     .xif_issue_resp_register_read_i(xif_issue_resp_register_read_i),
     .xif_issue_resp_writeback_i(xif_issue_resp_writeback_i),
     .coproc_instr_valid_o(coproc_instr_valid),
 //---------------------------------------------------------------------------------
 
 
-  .instr_post_incr_valid_o(instr_post_incr_valid_o),
+
 
 
     // jump/branches
@@ -704,6 +819,7 @@ module cve2_id_stage #(
 //---------------------------------------------------------------------------------
 
   cve2_controller #(
+    .N_HWLP      (N_HWLP)
   ) controller_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -781,7 +897,18 @@ module cve2_id_stage #(
 
     // Performance Counters
     .perf_jump_o   (perf_jump_o),
-    .perf_tbranch_o(perf_tbranch_o)
+    .perf_tbranch_o(perf_tbranch_o),
+
+
+
+  //---------------------------------------------------------------------------------
+    .hwlp_end_i(hwlp_start_q),
+    .hwlp_cnt_i(hwlp_cnt_q),
+    .hwlp_dec_cnt_o(hwlp_dec_cnt)
+  //---------------------------------------------------------------------------------
+
+
+  
   );
 
   assign multdiv_en_dec   = mult_en_dec | div_en_dec;
@@ -805,9 +932,13 @@ module cve2_id_stage #(
   assign alu_operand_a_ex_o          = alu_operand_a;
   assign alu_operand_b_ex_o          = alu_operand_b;
 
+
+
 //---------------------------------------------------------------------------------
   assign alu_operand_c_ex_o          = alu_operand_c;
 //---------------------------------------------------------------------------------
+
+
 
   assign mult_en_ex_o                = mult_en_id;
   assign div_en_ex_o                 = div_en_id;
@@ -816,6 +947,8 @@ module cve2_id_stage #(
   assign multdiv_signed_mode_ex_o    = multdiv_signed_mode;
   assign multdiv_operand_a_ex_o      = rf_rdata_a_fwd;
   assign multdiv_operand_b_ex_o      = rf_rdata_b_fwd;
+
+
 
 //---------------------------------------------------------------------------------
   assign xif_issue_req_instr_o       = instr_rdata_i;
@@ -840,6 +973,8 @@ module cve2_id_stage #(
   
   assign xif_result_ready_o = 1'b1;
 //---------------------------------------------------------------------------------
+
+
 
   ////////////////////////
   // Branch set control //
