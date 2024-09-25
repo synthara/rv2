@@ -114,7 +114,6 @@ module cve2_id_stage #(
 
 //---------------------------------------------------------------------------------
   //Signals needed for Post-Increment Load&Store operations.
-  output logic                      instr_post_incr_valid_o,
   output logic                      lsu_addr_mux_sel_o,
 //---------------------------------------------------------------------------------
 
@@ -758,7 +757,6 @@ module cve2_id_stage #(
 
 
 //---------------------------------------------------------------------------------
-    .instr_post_incr_valid_o(instr_post_incr_valid_o),
     .lsu_addr_mux_sel_o(lsu_addr_mux_sel_o), 
 //---------------------------------------------------------------------------------
 
