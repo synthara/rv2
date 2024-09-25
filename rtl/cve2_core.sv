@@ -76,6 +76,8 @@ module cve2_core import cve2_pkg::*; #(
   input  logic                         xif_result_valid_i,
   input  logic                         xif_result_we_i,
   input  logic [31:0]                  xif_result_data_i,
+
+  output logic [31:0]                  csr_vec_mode_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -770,6 +772,14 @@ module cve2_core import cve2_pkg::*; #(
     .csr_op_i    (csr_op),
     .csr_op_en_i (csr_op_en),
     .csr_rdata_o (csr_rdata),
+
+
+
+//---------------------------------------------------------------------------------
+    .csr_vec_mode_o (csr_vec_mode_o),
+//---------------------------------------------------------------------------------
+
+
 
     // Interrupt related control signals
     .irq_software_i   (irq_software_i),

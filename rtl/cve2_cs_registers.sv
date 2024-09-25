@@ -50,6 +50,15 @@ module cve2_cs_registers #(
   input                        csr_op_en_i,
   output logic [31:0]          csr_rdata_o,
 
+
+
+//---------------------------------------------------------------------------------
+  //To co-processor.
+  output logic [31:0]          csr_vec_mode_o, 
+//---------------------------------------------------------------------------------
+
+
+
   // interrupts
   input  logic                 irq_software_i,
   input  logic                 irq_timer_i,
@@ -189,6 +198,7 @@ import cve2_pkg::*;
   logic        vec_mode_d, vec_mode_q;
   logic        vec_mode_en;
   assign       vec_mode_d = csr_wdata_i;
+  assign       csr_vec_mode_o = vec_mode_q;
 //---------------------------------------------------------------------------------
 
   // CSRs for recoverable NMIs
