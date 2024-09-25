@@ -60,6 +60,9 @@ module cve2_top import cve2_pkg::*; #(
   input  logic                         debug_req_i,
   output crash_dump_t                  crash_dump_o,
 
+  output logic [31:0]                  program_counter_id,
+  output logic [31:0]                  program_counter_if,
+
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follows
   // the convention of RISC-V Formal Interface Specification.
@@ -196,6 +199,9 @@ module cve2_top import cve2_pkg::*; #(
 
     .debug_req_i,
     .crash_dump_o,
+
+    .program_counter_id(program_counter_id),
+    .program_counter_if(program_counter_if),
 
 `ifdef RVFI
     .rvfi_valid,
