@@ -66,6 +66,8 @@ module cve2_top_tracing import cve2_pkg::*; #(
   input  logic                         xif_result_valid_i,
   input  logic                         xif_result_we_i,
   input  logic [31:0]                  xif_result_data_i,
+
+  output logic [31:0]                  csr_vec_mode_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -186,6 +188,8 @@ module cve2_top_tracing import cve2_pkg::*; #(
     .xif_result_valid_i,
     .xif_result_we_i,
     .xif_result_data_i,
+
+    .csr_vec_mode_o,
 //---------------------------------------------------------------------------------
 
     .irq_software_i,
