@@ -43,7 +43,7 @@ module cve2_load_store_unit
 //---------------------------------------------------------------------------------
   input logic          instr_post_incr_valid_i,
   input logic          we_b_i,
-  input logic [4:0]    alu_operand_a_i,
+  input logic [31:0]    alu_operand_a_i,
   input logic          lsu_addr_mux_sel_i,
 //---------------------------------------------------------------------------------
 
@@ -119,7 +119,7 @@ module cve2_load_store_unit
 
 
 
-  assign data_offset = data_addr[1:0];
+  //assign data_offset = data_addr[1:0];
 
   ///////////////////
   // BE generation //
@@ -498,7 +498,7 @@ module cve2_load_store_unit
 
 
 //---------------------------------------------------------------------------------
-  logic[31:0] data_addr_post_incr_d, data_addr_post_incr_q;
+  logic [31:0] data_addr_post_incr_d, data_addr_post_incr_q;
 
   assign data_addr_post_incr_d = data_addr_w_aligned;
 
@@ -513,9 +513,11 @@ module cve2_load_store_unit
   always_comb begin
     if(lsu_addr_mux_sel_i) begin
       data_addr_o = we_b_i ? data_addr_w_aligned : data_addr_post_incr_q;
+      data_offset = we_b_i ? data_addr_w_aligned[1:0] : data_addr_post_incr_q[1:0];
     end
     else begin
       data_addr_o = data_addr_w_aligned;
+      data_offset = data_addr_w_aligned[1:0];
     end
   end
 //---------------------------------------------------------------------------------
