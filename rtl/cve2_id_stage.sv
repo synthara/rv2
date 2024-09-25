@@ -21,7 +21,7 @@ module cve2_id_stage #(
   parameter bit               RV32E  = 0,
   parameter cve2_pkg::rv32m_e RV32M  = cve2_pkg::RV32MFast,
   parameter cve2_pkg::rv32b_e RV32B  = cve2_pkg::RV32BNone,
-  parameter bit [31:0] COPROC_OPCODE = 32'h00400400
+  parameter bit [31:0] COPROC_OPCODE = 1 << 30
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,

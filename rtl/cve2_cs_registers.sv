@@ -186,7 +186,7 @@ import cve2_pkg::*;
   logic        dscratch0_en, dscratch1_en;
 
 //---------------------------------------------------------------------------------
-  logic        vec_mode_d, vec_mode_q;
+  logic [31:0] vec_mode_d, vec_mode_q;
   logic        vec_mode_en;
   assign       vec_mode_d = csr_wdata_i;
 //---------------------------------------------------------------------------------
