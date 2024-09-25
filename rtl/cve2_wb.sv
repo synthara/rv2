@@ -34,7 +34,7 @@ module cve2_wb #(
 
   input  logic [4:0]               rf_waddr_b_id_i,
   input  logic [31:0]              rf_wdata_b_id_i,
-  input  logic                     rf_we_b_id_i,
+  input  logic                     lsu_we_b_i,
 //---------------------------------------------------------------------------------
 
 
@@ -91,7 +91,7 @@ module cve2_wb #(
 //---------------------------------------------------------------------------------
   assign rf_waddr_b_wb_o = rf_waddr_b_id_i;
   assign rf_wdata_b_wb_o = rf_wdata_b_id_i;
-  assign rf_we_b_wb_o    = rf_we_b_id_i;
+  assign rf_we_b_wb_o    = lsu_we_b_i;
 //---------------------------------------------------------------------------------
 
 

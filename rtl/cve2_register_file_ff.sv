@@ -70,10 +70,14 @@ module cve2_register_file_ff #(
       if (!rst_ni) begin
         rf_reg_q[i] <= WordZeroVal;
       end else begin
-        if (we_a_dec[i]) begin
+        if(we_a_dec[i] && we_b_dec[i]) begin
           rf_reg_q[i] <= wdata_a_i;
         end
         else begin
+          if (we_a_dec[i]) begin
+            rf_reg_q[i] <= wdata_a_i;
+          end
+
           if (we_b_dec[i]) begin
             rf_reg_q[i] <= wdata_b_i;
           end 

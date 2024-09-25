@@ -209,7 +209,6 @@ module cve2_id_stage #(
   output logic                      rf_we_b_id_o,
 //---------------------------------------------------------------------------------
 
-  output logic instr_post_incr_valid_o,
 
 
   output  logic                     en_wb_o,
@@ -655,8 +654,6 @@ module cve2_id_stage #(
     .coproc_instr_valid_o(coproc_instr_valid),
 //---------------------------------------------------------------------------------
 
-
-  .instr_post_incr_valid_o(instr_post_incr_valid_o),
 
 
     // jump/branches
