@@ -333,7 +333,7 @@ module cve2_controller #(
 
 //---------------------------------------------------------------------------------
   //Hardware Loop control.
-  logic hwlp0_end, hwlp0_cnt, hwlp1_end, hwlp1_cnt;
+  logic[31:0] hwlp0_end, hwlp0_cnt, hwlp1_end, hwlp1_cnt;
   assign hwlp0_end = hwlp_end_i[0];
   assign hwlp0_cnt = hwlp_cnt_i[0];
   assign hwlp1_end = hwlp_end_i[1];
@@ -341,10 +341,10 @@ module cve2_controller #(
 
   logic hwlp0_end_eq_pc,   hwlp1_end_eq_pc;
   logic hwlp0_cnt_ge_zero, hwlp1_cnt_ge_zero;
-  assign hwlp0_end_eq_pc   = (hwlp0_end == pc_id_i + 4);
-  assign hwlp1_end_eq_pc   = (hwlp1_end == pc_id_i + 4);
-  assign hwlp0_cnt_ge_zero = (hwlp0_cnt >= 0);
-  assign hwlp1_cnt_ge_zero = (hwlp1_cnt >= 0);
+  assign hwlp0_end_eq_pc   = (hwlp0_end == (pc_id_i + 4));
+  assign hwlp1_end_eq_pc   = (hwlp1_end == (pc_id_i + 4));
+  assign hwlp0_cnt_ge_zero = (hwlp0_cnt > 0);
+  assign hwlp1_cnt_ge_zero = (hwlp1_cnt > 0);
 
   logic hwlp0_jump, hwlp1_jump;
 
