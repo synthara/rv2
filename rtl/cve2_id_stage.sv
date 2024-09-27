@@ -23,7 +23,7 @@ module cve2_id_stage #(
   parameter cve2_pkg::rv32b_e RV32B       = cve2_pkg::RV32BNone,
   parameter                   N_HWLP      = 2,
   parameter                   N_HWLP_BITS = $clog2(N_HWLP),
-  parameter bit [31:0]        COPROC_OPCODE = 32'h00400400
+  parameter bit [31:0] COPROC_OPCODE = 1 << 30
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
