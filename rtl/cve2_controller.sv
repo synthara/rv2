@@ -347,26 +347,40 @@ module cve2_controller #(
   assign hwlp1_cnt_ge_zero = (hwlp1_cnt > 0);
 
   logic hwlp0_jump, hwlp1_jump;
-
+  logic [1:0] hwlp_dec_cnt_d, hwlp_dec_cnt_q;
   always_comb begin
     if(hwlp0_end_eq_pc && hwlp0_cnt_ge_zero) begin
       hwlp0_jump        = 1'b1;
-      hwlp_dec_cnt_o[0] = 1'b1;
+      hwlp_dec_cnt_d[0] = 1'b1;
     end else begin
       hwlp0_jump        = 1'b0;
-      hwlp_dec_cnt_o[0] = 1'b0;
+      hwlp_dec_cnt_d[0] = 1'b0;
     end
   end
 
   always_comb begin
     if(hwlp1_end_eq_pc && hwlp1_cnt_ge_zero) begin
       hwlp1_jump        = 1'b1;
-      hwlp_dec_cnt_o[1] = 1'b1;
+      hwlp_dec_cnt_d[1] = 1'b1;
     end else begin
       hwlp1_jump        = 1'b0;
-      hwlp_dec_cnt_o[1] = 1'b0;
+      hwlp_dec_cnt_d[1] = 1'b0;
     end
   end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      hwlp_dec_cnt_q <= 2'b0;
+    end else begin
+      hwlp_dec_cnt_q <= hwlp_dec_cnt_d;
+    end
+  end
+
+  logic hwlp0_dec_cnt, hwlp1_dec_cnt;
+  assign hwlp0_dec_cnt = (hwlp_dec_cnt_d[0] && !hwlp_dec_cnt_q[0]) ? 1'b1 : 1'b0;
+  assign hwlp1_dec_cnt = (hwlp_dec_cnt_d[1] && !hwlp_dec_cnt_q[1]) ? 1'b1 : 1'b0;
+
+  assign hwlp_dec_cnt_o = {hwlp1_dec_cnt, hwlp0_dec_cnt};
 //---------------------------------------------------------------------------------
 
 
