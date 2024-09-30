@@ -41,10 +41,11 @@ module cve2_load_store_unit
 
 
 //---------------------------------------------------------------------------------
-  input logic          instr_post_incr_valid_i,
-  input logic          we_b_i,
-  input logic [4:0]    alu_operand_a_i,
+  input logic          rf_we_b_id_i,
+  input logic [31:0]   alu_operand_a_i,
   input logic          lsu_addr_mux_sel_i,
+
+  output logic         lsu_we_b_o,
 //---------------------------------------------------------------------------------
 
 
@@ -497,27 +498,22 @@ module cve2_load_store_unit
   assign data_addr_w_aligned = {data_addr[31:2], 2'b00};
 
 
-//---------------------------------------------------------------------------------
-  logic[31:0] data_addr_post_incr_d, data_addr_post_incr_q;
 
-  assign data_addr_post_incr_d = data_addr_w_aligned;
+//---------------------------------------------------------------------------------
+  logic we_b_d, we_b_q;
+  assign we_b_d = rf_we_b_id_i;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      data_addr_post_incr_q <= '0;
-    end else if( we_b_i) begin
-      data_addr_post_incr_q <= data_addr_post_incr_d;
+      we_b_q <= '0;
+    end else if(lsu_req_i) begin
+      we_b_q <= we_b_d;
     end
   end
 
-  always_comb begin
-    if(lsu_addr_mux_sel_i) begin
-      data_addr_o = we_b_i ? data_addr_w_aligned : data_addr_post_incr_q;
-    end
-    else begin
-      data_addr_o = data_addr_w_aligned;
-    end
-  end
+  assign lsu_we_b_o = we_b_q && lsu_resp_valid_o; 
+
+  assign data_addr_o = data_addr_w_aligned;
 //---------------------------------------------------------------------------------
 
 

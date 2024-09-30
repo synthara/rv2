@@ -213,6 +213,7 @@ module cve2_core import cve2_pkg::*; #(
 //---------------------------------------------------------------------------------
   logic        rf_we_a_wb;
   //2nd register file write port enable signal.
+  logic        lsu_we_b;
   logic        rf_we_b_wb;
 //---------------------------------------------------------------------------------
 
@@ -433,7 +434,6 @@ module cve2_core import cve2_pkg::*; #(
   // For non secure Ibex only the bottom bit of fetch enable is considered
   assign instr_req_gated = instr_req_int;
 
-  logic instr_post_incr_valid;
 
   //////////////
   // ID stage //
@@ -637,7 +637,8 @@ module cve2_core import cve2_pkg::*; #(
     .rf_wdata_b_id_o(rf_wdata_b_id),
     .rf_we_b_id_o   (rf_we_b_id),
 //---------------------------------------------------------------------------------
-    
+
+
 
     .en_wb_o           (en_wb),
     .instr_perf_count_id_o (instr_perf_count_id),
@@ -726,10 +727,11 @@ module cve2_core import cve2_pkg::*; #(
 
 
 //---------------------------------------------------------------------------------
-    .instr_post_incr_valid_i(instr_post_incr_valid),
-    .we_b_i(rf_we_b_wb),
+    .rf_we_b_id_i(rf_we_b_id),
     .alu_operand_a_i   (alu_operand_a_ex),
     .lsu_addr_mux_sel_i(lsu_addr_mux_sel),
+
+    .lsu_we_b_o(lsu_we_b),
 //---------------------------------------------------------------------------------
 
 
@@ -776,7 +778,7 @@ module cve2_core import cve2_pkg::*; #(
     .rf_we_a_id_i(rf_we_a_id),
     .rf_waddr_b_id_i(rf_waddr_b_id),
     .rf_wdata_b_id_i(rf_wdata_b_id),
-    .rf_we_b_id_i   (rf_we_b_id),
+    .lsu_we_b_i   (lsu_we_b),
 //---------------------------------------------------------------------------------
 
 
@@ -872,7 +874,7 @@ module cve2_core import cve2_pkg::*; #(
 //---------------------------------------------------------------------------------
 
   );
-
+  
 
   /////////////////////////////////////////
   // CSRs (Control and Status Registers) //

@@ -355,10 +355,10 @@ module cve2_decoder #(
     csr_illegal             = 1'b0;
     csr_op                  = CSR_OP_READ;
 
-    data_we_o               = 1'b0;
-    data_type_o             = 2'b00;
-    data_sign_extension_o   = 1'b0;
-    data_req_o              = 1'b0;
+    data_we_o             = 1'b0;
+    data_type_o           = '0;
+    data_sign_extension_o = 1'b0;
+    data_req_o            = 1'b0;
 
 
 
@@ -465,7 +465,7 @@ module cve2_decoder #(
       OPCODE_LOAD: begin
         rf_ren_a_o          = 1'b1;
         data_req_o          = 1'b1;
-        data_type_o         = 2'b00;
+        data_type_o         = '0;
 
         // sign/zero extension
         data_sign_extension_o = ~instr[14];
@@ -475,7 +475,7 @@ module cve2_decoder #(
           2'b00: data_type_o = 2'b10; // lb(u)
           2'b01: data_type_o = 2'b01; // lh(u)
           2'b10: begin
-            data_type_o = 2'b00;      // lw
+            data_type_o = '0;      // lw
             if (instr[14]) begin
               illegal_insn = 1'b1;    // lwu does not exist
             end
@@ -802,7 +802,6 @@ module cve2_decoder #(
           rf_ren_a_o = 1'b1; // Enable read from register file port 1.
           
           if(instr[13:12] != 2'b11) begin
-            instr_post_incr_valid_o = 1'b1;
             lsu_addr_mux_sel_o = 1'b1; // Select rs1 to address the memory.
             rf_we_b_d          = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
           end
@@ -822,13 +821,12 @@ module cve2_decoder #(
       OPCODE_CUSTOM_1: begin 
         unique case (instr[14:12])
           3'b000, 3'b001, 3'b010: begin // Post-Increment Register-Immediate Store operations.
-            instr_post_incr_valid_o = 1'b1;
-            data_req_o              = 1'b1;  // Request to LSU.
-            rf_ren_a_o              = 1'b1;  // Enable read from register file port 1.
-            rf_ren_b_o              = 1'b1;  // Enable read from register file port 1.
-            data_we_o               = 1'b1;  // Enable write to memory.
-            lsu_addr_mux_sel_o      = 1'b1;  // Select rs1 to address the memory.
-            rf_we_b_d               = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
+            data_req_o         = 1'b1;  // Request to LSU.
+            rf_ren_a_o         = 1'b1;  // Enable read from register file port 1.
+            rf_ren_b_o         = 1'b1;  // Enable read from register file port 1.
+            data_we_o          = 1'b1;  // Enable write to memory.
+            lsu_addr_mux_sel_o = 1'b1;  // Select rs1 to address the memory.
+            rf_we_b_d          = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=Sext(Imm[11:0])).
     
             // Store size.
             unique case (instr[13:12])
@@ -842,15 +840,14 @@ module cve2_decoder #(
                 data_type_o = 2'b00; // sw
               end
               default: begin
-                data_req_o              = 1'b0;  
-                rf_ren_a_o              = 1'b0;  
-                rf_ren_b_o              = 1'b0;
-                data_we_o               = 1'b0;  
-                lsu_addr_mux_sel_o      = 1'b0;  
-                rf_we_b_d               = 1'b0; 
-                data_type_o             = '0;
-                instr_post_incr_valid_o = 1'b0;
-                illegal_insn            = 1'b1;
+                data_req_o         = 1'b0;  
+                rf_ren_a_o         = 1'b0;  
+                rf_ren_a_o         = 1'b0;
+                data_we_o          = 1'b0;  
+                lsu_addr_mux_sel_o = 1'b0;  
+                rf_we_b_d          = 1'b0; 
+                data_type_o        = '0;
+                illegal_insn       = 1'b1;
               end
             endcase
           end
@@ -865,9 +862,8 @@ module cve2_decoder #(
                   rf_ren_b_o = 1'b1; // Enable read from register file port 2.
                   
                   if(instr[27] == 1'b0) begin
-                    instr_post_incr_valid_o = 1'b1;
-                    lsu_addr_mux_sel_o      = 1'b1; // Select rs1 to address the memory.
-                    rf_we_b_d               = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=rs2).
+                    lsu_addr_mux_sel_o = 1'b1; // Select rs1 to address the memory.
+                    rf_we_b_d          = 1'b1; // Enable write to register file port 2 (incremented address: rs1+=rs2).
                   end
                                  
                   // Sign/zero extension.
@@ -881,14 +877,13 @@ module cve2_decoder #(
                     3'b100 : data_type_o = 2'b10; // lbu
                     3'b101 : data_type_o = 2'b01; // lhu
                     default: begin
-                      data_req_o              = 1'b0; 
-                      rf_ren_a_o              = 1'b0; 
-                      rf_ren_b_o              = 1'b0;  
-                      lsu_addr_mux_sel_o      = 1'b0; 
-                      rf_we_b_d               = 1'b0; 
-                      data_type_o             = 2'b00;
-                      instr_post_incr_valid_o = 1'b0;
-                      illegal_insn            = 1'b1;
+                      data_req_o         = 1'b0; 
+                      rf_ren_a_o         = 1'b0; 
+                      rf_ren_b_o         = 1'b0;  
+                      lsu_addr_mux_sel_o = 1'b0; 
+                      rf_we_b_d          = 1'b0; 
+                      data_type_o        = '0;
+                      illegal_insn       = 1'b1;
                     end
                   endcase
                 end
@@ -902,7 +897,6 @@ module cve2_decoder #(
 
 
                   if (instr[27] == 1'b0) begin
-                    instr_post_incr_valid_o = 1'b1;
                     lsu_addr_mux_sel_o = 1'b1;  // Select rs1 to address the memory.
                     rf_we_b_d          = 1'b1;  // Enable write to register file port 2 (incremented address: rs1+=rs3.
                   end
@@ -913,15 +907,14 @@ module cve2_decoder #(
                     2'b01  : data_type_o = 2'b01; // sh
                     2'b10  : data_type_o = 2'b00; // sw
                     default: begin
-                      data_req_o              = 1'b0;  
-                      rf_ren_a_o              = 1'b0; 
-                      rf_ren_c_o              = 1'b0; 
-                      data_we_o               = 1'b0;   
-                      lsu_addr_mux_sel_o      = 1'b0;  
-                      rf_we_b_d               = 1'b0;  
-                      data_type_o             = 2'b00;
-                      instr_post_incr_valid_o = 1'b0;
-                      illegal_insn            = 1'b1;
+                      data_req_o         = 1'b0;  
+                      rf_ren_a_o         = 1'b0; 
+                      rf_ren_c_o         = 1'b0; 
+                      data_we_o          = 1'b0;   
+                      lsu_addr_mux_sel_o = 1'b0;  
+                      rf_we_b_d          = 1'b0;  
+                      data_type_o        = '0;
+                      illegal_insn       = 1'b1;
                     end
                   endcase
                 end
