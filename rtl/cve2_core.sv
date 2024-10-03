@@ -443,7 +443,7 @@ module cve2_core import cve2_pkg::*; #(
 
 //---------------------------------------------------------------------------------
   localparam int unsigned N_HWLP = 2;
-  localparam int unsigned COPROC_OPCODE = 32'h00400400;
+  localparam int unsigned COPROC_OPCODE = 1 << 30; //TODO: change this value to let the core recognize all the coprocessor instructions
 //---------------------------------------------------------------------------------
 
 
