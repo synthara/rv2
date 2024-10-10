@@ -55,29 +55,11 @@ module cve2_core import cve2_pkg::*; #(
   input  logic                         data_err_i,
 
 //---------------------------------------------------------------------------------
-  // CV-X-IF
-  // Issue interface
-  output logic                         xif_issue_valid_o,
-  output logic [31:0]                  xif_issue_req_instr_o,
-  input  logic                         xif_issue_ready_i,
-  input  logic                         xif_issue_resp_accept_i,
-  input  logic                         xif_issue_resp_writeback_i,
-  input  logic [2:0]                   xif_issue_resp_register_read_i,
-  // Register interface
-  output logic [31:0]                  xif_register_rs1_o,
-  output logic [31:0]                  xif_register_rs2_o,
-  output logic [31:0]                  xif_register_rs3_o,
-  output logic [2:0]                   xif_register_rs_valid_o,
-  // Commit interface
-  output logic                         xif_commit_valid_o,
-  output logic                         xif_commit_kill_o,
-  // Result interface
-  output logic                         xif_result_ready_o,
-  input  logic                         xif_result_valid_i,
-  input  logic                         xif_result_we_i,
-  input  logic [31:0]                  xif_result_data_i,
-
-  output logic [31:0]                  csr_vec_mode_o,
+  rvv_cv_x_if.cv_x_if_issue_mst        xcs_cv_x_if_issue,
+  rvv_cv_x_if.cv_x_if_register_mst     xcs_cv_x_if_register,
+  rvv_cv_x_if.cv_x_if_commit_mst       xcs_cv_x_if_commit,
+  rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
+  status_if.mst                        csr_vec_mode,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -443,7 +425,7 @@ module cve2_core import cve2_pkg::*; #(
 
 //---------------------------------------------------------------------------------
   localparam int unsigned N_HWLP = 2;
-  localparam int unsigned COPROC_OPCODE = 1 << 30; //TODO: change this value to let the core recognize all the coprocessor instructions
+  localparam int unsigned COPROC_OPCODE = (1 << 30) | (1 << 22) | (1 << 10); //TODO: change this value to let the core recognize all the coprocessor instructions
 //---------------------------------------------------------------------------------
 
 
@@ -564,25 +546,25 @@ module cve2_core import cve2_pkg::*; #(
 //---------------------------------------------------------------------------------
     // CV-X-IF
     // Issue interface
-    .xif_issue_valid_o(xif_issue_valid_o),
-    .xif_issue_req_instr_o(xif_issue_req_instr_o),
-    .xif_issue_ready_i(xif_issue_ready_i),
-    .xif_issue_resp_accept_i(xif_issue_resp_accept_i),
-    .xif_issue_resp_writeback_i(xif_issue_resp_writeback_i),
-    .xif_issue_resp_register_read_i(xif_issue_resp_register_read_i),
+    .xif_issue_valid_o             (xcs_cv_x_if_issue.issue_valid),
+    .xif_issue_req_instr_o         (xcs_cv_x_if_issue.issue_req.instr),
+    .xif_issue_ready_i             (xcs_cv_x_if_issue.issue_ready),
+    .xif_issue_resp_accept_i       (xcs_cv_x_if_issue.issue_resp.accept),
+    .xif_issue_resp_writeback_i    (xcs_cv_x_if_issue.issue_resp.writeback),
+    .xif_issue_resp_register_read_i(xcs_cv_x_if_issue.issue_resp.register_read),
     // Register interface
-    .xif_register_rs1_o(xif_register_rs1_o),
-    .xif_register_rs2_o(xif_register_rs2_o),
-    .xif_register_rs3_o(xif_register_rs3_o),
-    .xif_register_rs_valid_o(xif_register_rs_valid_o),
+    .xif_register_rs1_o            (xcs_cv_x_if_register.register.rs[0]),
+    .xif_register_rs2_o            (xcs_cv_x_if_register.register.rs[1]),
+    .xif_register_rs3_o            (xcs_cv_x_if_register.register.rs[2]),
+    .xif_register_rs_valid_o       (xcs_cv_x_if_register.register.rs_valid),
     // Commit interface
-    .xif_commit_valid_o(xif_commit_valid_o),
-    .xif_commit_kill_o(xif_commit_kill_o),
+    .xif_commit_valid_o            (xcs_cv_x_if_commit.commit_valid),
+    .xif_commit_kill_o             (xcs_cv_x_if_commit.commit.commit_kill),
     // Result interface
-    .xif_result_ready_o(xif_result_ready_o),
-    .xif_result_valid_i(xif_result_valid_i),
-    .xif_result_we_i(xif_result_we_i),
-    .xif_result_data_i(xif_result_data_i),
+    .xif_result_ready_o            (xcs_cv_x_if_result.result_ready),
+    .xif_result_valid_i            (xcs_cv_x_if_result.result_valid),
+    .xif_result_we_i               (xcs_cv_x_if_result.result.we),
+    .xif_result_data_i             (xcs_cv_x_if_result.result.data),
 //---------------------------------------------------------------------------------
 
 
@@ -918,7 +900,7 @@ module cve2_core import cve2_pkg::*; #(
 
 
 //---------------------------------------------------------------------------------
-    .csr_vec_mode_o (csr_vec_mode_o),
+    .csr_vec_mode_o (csr_vec_mode.packet),
 //---------------------------------------------------------------------------------
 
 

@@ -45,29 +45,17 @@ module cve2_top_tracing import cve2_pkg::*; #(
   input  logic                         data_err_i,
 
 //---------------------------------------------------------------------------------
-  // CV-X-IF
-  // Issue interface
-  output logic                         xif_issue_valid_o,
-  output logic [31:0]                  xif_issue_req_instr_o,
-  input  logic                         xif_issue_ready_i,
-  input  logic                         xif_issue_resp_accept_i,
-  input  logic                         xif_issue_resp_writeback_i,
-  input  logic [2:0]                   xif_issue_resp_register_read_i,
-  // Register interface
-  output logic [31:0]                  xif_register_rs1_o,
-  output logic [31:0]                  xif_register_rs2_o,
-  output logic [31:0]                  xif_register_rs3_o,
-  output logic [2:0]                   xif_register_rs_valid_o,
-  // Commit interface
-  output logic                         xif_commit_valid_o,
-  output logic                         xif_commit_kill_o,
-  // Result interface
-  output logic                         xif_result_ready_o,
-  input  logic                         xif_result_valid_i,
-  input  logic                         xif_result_we_i,
-  input  logic [31:0]                  xif_result_data_i,
-
-  output logic [31:0]                  csr_vec_mode_o,
+// CV-X-IF.
+  // Issue interface.
+  rvv_cv_x_if.cv_x_if_issue_mst        xcs_cv_x_if_issue,
+  // Register interface.
+  rvv_cv_x_if.cv_x_if_register_mst     xcs_cv_x_if_register,
+  // Commit interface.
+  rvv_cv_x_if.cv_x_if_commit_mst       xcs_cv_x_if_commit,
+  // Result interface.  
+  rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
+  // CSR vec mode.
+  status_if.mst                        csr_vec_mode,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -166,30 +154,18 @@ module cve2_top_tracing import cve2_pkg::*; #(
     .data_rdata_i,
     .data_err_i,
 
-  //---------------------------------------------------------------------------------
-  // CV-X-IF
-  // Issue interface
-    .xif_issue_valid_o,
-    .xif_issue_req_instr_o,
-    .xif_issue_ready_i,
-    .xif_issue_resp_accept_i,
-    .xif_issue_resp_writeback_i,
-    .xif_issue_resp_register_read_i,
-  // Register interface
-    .xif_register_rs1_o,
-    .xif_register_rs2_o,
-    .xif_register_rs3_o,
-    .xif_register_rs_valid_o,
-  // Commit interface
-    .xif_commit_valid_o,
-    .xif_commit_kill_o,
-  // Result interface
-    .xif_result_ready_o,
-    .xif_result_valid_i,
-    .xif_result_we_i,
-    .xif_result_data_i,
-
-    .csr_vec_mode_o,
+//---------------------------------------------------------------------------------
+    // CV-X-IF.
+    // Issue interface.
+    .xcs_cv_x_if_issue,
+    // Register interface.
+    .xcs_cv_x_if_register,
+    // Commit interface.
+    .xcs_cv_x_if_commit,
+    // Result interface.
+    .xcs_cv_x_if_result,
+    // CSR vec mode.
+    .csr_vec_mode, 
 //---------------------------------------------------------------------------------
 
     .irq_software_i,
