@@ -225,15 +225,13 @@ module cve2_fetch_fifo #(
   end
 
   for (genvar i = 0; i < DEPTH; i++) begin : g_fifo_regs
-    begin : g_rdata
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          rdata_q[i] <= '0;
-          err_q[i]   <= '0;
-        end else if (entry_en[i]) begin
-          rdata_q[i] <= rdata_d[i];
-          err_q[i]   <= err_d[i];
-        end
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        rdata_q[i] <= '0;
+        err_q[i]   <= '0;
+      end else if (entry_en[i]) begin
+        rdata_q[i] <= rdata_d[i];
+        err_q[i]   <= err_d[i];
       end
     end
   end
