@@ -1161,7 +1161,7 @@ module cve2_id_stage #(
 
 //---------------------------------------------------------------------------------
   assign stall_id = stall_mem | stall_multdiv | stall_jump | stall_branch |
-                      stall_alu | stall_coproc | &ssr_stall_rf_i;
+                      stall_alu | stall_coproc | |ssr_stall_rf_i;
 //---------------------------------------------------------------------------------
 
   // Generally illegal instructions have no reason to stall, however they must still stall waiting

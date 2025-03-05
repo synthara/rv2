@@ -123,7 +123,7 @@ for(genvar RF_READ_PORT_IDX = 0; RF_READ_PORT_IDX < NUM_RF_READ_PORT; RF_READ_PO
                 end
             end
             default: begin
-                ssr_req_d[RF_READ_PORT_IDX] = SSR_ASSERT_REQ;
+                ssr_req_d[RF_READ_PORT_IDX]        = SSR_ASSERT_REQ;
                 ssr_valid_o[RF_READ_PORT_IDX]      = '0;
                 ssr_stall_rf[RF_READ_PORT_IDX]     = '0;
                 rf_rdata_mux_sel[RF_READ_PORT_IDX] = '0;
@@ -173,6 +173,13 @@ for(genvar RF_WRITE_PORT_IDX = 0; RF_WRITE_PORT_IDX < NUM_RF_WRITE_PORT; RF_WRIT
                 else begin
                     ssr_stall_rf[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '1;
                 end  
+            end
+            
+            default: begin
+                ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]    = SSR_ASSERT_REQ;
+                ssr_valid_o[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]  = '0;
+                ssr_stall_rf[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '0;
+                rf_we[RF_WRITE_PORT_IDX]                           = rf_we_dec[RF_WRITE_PORT_IDX];
             end
         endcase
     end
