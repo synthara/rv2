@@ -13,18 +13,19 @@
  * Top level module of the ibex RISC-V core
  */
 module cve2_core import cve2_pkg::*; #(
-  parameter bit          PMPEnable         = 1'b0,
-  parameter int unsigned PMPGranularity    = 0,
-  parameter int unsigned PMPNumRegions     = 4,
-  parameter int unsigned MHPMCounterNum    = 0,
-  parameter int unsigned MHPMCounterWidth  = 40,
-  parameter bit          RV32E             = 1'b0,
-  parameter rv32m_e      RV32M             = RV32MFast,
-  parameter rv32b_e      RV32B             = RV32BNone,
-  parameter bit          DbgTriggerEn      = 1'b0,
-  parameter int unsigned DbgHwBreakNum     = 1,
-  parameter int unsigned DmHaltAddr        = 32'h1A110800,
-  parameter int unsigned DmExceptionAddr   = 32'h1A110808
+  parameter bit          PMPEnable            = 1'b0,
+  parameter int unsigned PMPGranularity       = 0,
+  parameter int unsigned PMPNumRegions        = 4,
+  parameter int unsigned MHPMCounterNum       = 0,
+  parameter int unsigned MHPMCounterWidth     = 40,
+  parameter bit          RV32E                = 1'b0,
+  parameter rv32m_e      RV32M                = RV32MFast,
+  parameter rv32b_e      RV32B                = RV32BNone,
+  parameter bit          DbgTriggerEn         = 1'b0,
+  parameter int unsigned DbgHwBreakNum        = 1,
+  parameter int unsigned DmHaltAddr           = 32'h1A110800,
+  parameter int unsigned DmExceptionAddr      = 32'h1A110808,
+  parameter logic [NUM_SSR-1:0][4:0] SSR_ADDR = '0
 ) (
   // Clock and Reset
   input  logic                         clk_i,
@@ -55,11 +56,24 @@ module cve2_core import cve2_pkg::*; #(
   input  logic                         data_err_i,
 
 //---------------------------------------------------------------------------------
+  // CV-X-IF
+  // Issue interface
   rvv_cv_x_if.cv_x_if_issue_mst        xcs_cv_x_if_issue,
+  // Register interface
   rvv_cv_x_if.cv_x_if_register_mst     xcs_cv_x_if_register,
+  // Commit interface
   rvv_cv_x_if.cv_x_if_commit_mst       xcs_cv_x_if_commit,
+  // Result interface
   rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
+  // CSR vec mode
   status_if.mst                        csr_vec_mode,
+
+  // SSR interfaces
+  output logic [NUM_RF_PORT-1:0]                      ssr_valid_o,
+  input  logic [NUM_RF_PORT-1:0]                      ssr_ready_i,
+  output logic [NUM_RF_PORT-1:0][4:0]                 ssr_addr_o,
+  input  logic [NUM_RF_READ_PORT-1:0][31:0]  ssr_rdata_i,
+  output logic [NUM_RF_WRITE_PORT-1:0][31:0] ssr_wdata_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -421,11 +435,10 @@ module cve2_core import cve2_pkg::*; #(
   // ID stage //
   //////////////
 
-
-
 //---------------------------------------------------------------------------------
   localparam int unsigned N_HWLP = 2;
   localparam int unsigned COPROC_OPCODE = (1 << 30) | (1 << 22) | (1 << 10); //TODO: change this value to let the core recognize all the coprocessor instructions
+  logic [NUM_RF_PORT-1:0] ssr_stall_rf;
 //---------------------------------------------------------------------------------
 
 
@@ -614,11 +627,14 @@ module cve2_core import cve2_pkg::*; #(
     .rf_wdata_a_id_o(rf_wdata_a_id),
     .rf_we_a_id_o   (rf_we_a_id),
 
-    .rf_waddr_b_id_o(rf_waddr_b_id),
-    .rf_wdata_b_id_o(rf_wdata_b_id),
-    .rf_we_b_id_o   (rf_we_b_id),
+    .rf_waddr_b_id_o   (rf_waddr_b_id),
+    .rf_wdata_b_id_o   (rf_wdata_b_id),
+    .rf_we_b_id_o      (rf_we_b_id),
+
+    .ssr_stall_rf_i    (ssr_stall_rf),
 //---------------------------------------------------------------------------------
 
+ 
 
 
     .en_wb_o           (en_wb),
@@ -822,10 +838,14 @@ module cve2_core import cve2_pkg::*; #(
   ////////////////////////
   // RF (Register File) //
   ////////////////////////
-  cve2_register_file_ff #(
+
+  logic [31:0] csr_ssr_cfg; 
+
+  cve2_register_file_ff_wrp #(
     .RV32E            (RV32E),
     .DataWidth        (32),
-    .WordZeroVal      (32'h0)
+    .WordZeroVal      (32'h0),
+    .SSR_ADDR         (SSR_ADDR)
   ) register_file_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -843,15 +863,30 @@ module cve2_core import cve2_pkg::*; #(
     .rdata_c_o(rf_rdata_c),
 //---------------------------------------------------------------------------------
 
+    //1nd register file write port signals.
+    .we_a_i   (rf_we_a_wb),
     .waddr_a_i(rf_waddr_a_wb),
     .wdata_a_i(rf_wdata_a_wb),
     .we_a_i   (rf_we_a_wb),
 
 //---------------------------------------------------------------------------------
     //2nd register file write port signals.
+    .we_b_i   (rf_we_b_wb),
     .waddr_b_i(rf_waddr_b_wb),
     .wdata_b_i(rf_wdata_b_wb),
-    .we_b_i   (rf_we_b_wb)
+//---------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------
+    // SSR FSM signals
+    .csr_ssr_cfg_i(csr_ssr_cfg),
+    .ssr_stall_rf_o(ssr_stall_rf),
+
+    // SSR interfaces
+    .ssr_valid_o(ssr_valid_o),
+    .ssr_ready_i(ssr_ready_i),
+    .ssr_addr_o(ssr_addr_o),
+    .ssr_rdata_i(ssr_rdata_i),
+    .ssr_wdata_o(ssr_wdata_o)
 //---------------------------------------------------------------------------------
 
   );
@@ -901,6 +936,7 @@ module cve2_core import cve2_pkg::*; #(
 
 //---------------------------------------------------------------------------------
     .csr_vec_mode_o (csr_vec_mode.packet),
+    .csr_ssr_cfg_o  (csr_ssr_cfg),
 //---------------------------------------------------------------------------------
 
 

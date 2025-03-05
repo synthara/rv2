@@ -17,6 +17,8 @@
 `include "prim_assert.sv"
 `include "dv_fcov_macros.svh"
 
+import cve2_pkg::*;
+
 module cve2_id_stage #(
   parameter bit               RV32E       = 0,
   parameter cve2_pkg::rv32m_e RV32M       = cve2_pkg::RV32MFast,
@@ -218,6 +220,9 @@ module cve2_id_stage #(
   output logic [4:0]                rf_waddr_b_id_o,
   output logic [31:0]               rf_wdata_b_id_o,
   output logic                      rf_we_b_id_o,
+
+  // SSR signal
+  input logic [NUM_RF_PORT-1:0]     ssr_stall_rf_i,
 //---------------------------------------------------------------------------------
 
 
@@ -1156,7 +1161,7 @@ module cve2_id_stage #(
 
 //---------------------------------------------------------------------------------
   assign stall_id = stall_mem | stall_multdiv | stall_jump | stall_branch |
-                      stall_alu | stall_coproc;
+                      stall_alu | stall_coproc | &ssr_stall_rf_i;
 //---------------------------------------------------------------------------------
 
   // Generally illegal instructions have no reason to stall, however they must still stall waiting

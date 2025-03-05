@@ -56,6 +56,13 @@ module cve2_top_tracing import cve2_pkg::*; #(
   rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
   // CSR vec mode.
   status_if.mst                        csr_vec_mode,
+
+  // SSR interfaces
+  output logic [NUM_RF_PORT-1:0]                      ssr_valid_o,
+  input  logic [NUM_RF_PORT-1:0]                      ssr_ready_i,
+  output logic [NUM_RF_PORT-1:0][4:0]                 ssr_addr_o,
+  input  logic [NUM_RF_READ_PORT-1:0][31:0]  ssr_rdata_i,
+  output logic [NUM_RF_WRITE_PORT-1:0][31:0] ssr_wdata_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -155,17 +162,24 @@ module cve2_top_tracing import cve2_pkg::*; #(
     .data_err_i,
 
 //---------------------------------------------------------------------------------
-    // CV-X-IF.
-    // Issue interface.
+    // CV-X-IF
+    // Issue interface
     .xcs_cv_x_if_issue,
-    // Register interface.
+    // Register interface
     .xcs_cv_x_if_register,
-    // Commit interface.
+    // Commit interface
     .xcs_cv_x_if_commit,
-    // Result interface.
+    // Result interface
     .xcs_cv_x_if_result,
-    // CSR vec mode.
+    // CSR vec mode
     .csr_vec_mode, 
+
+    // SSR interfaces
+    .ssr_valid_o,
+    .ssr_ready_i,
+    .ssr_addr_o,
+    .ssr_rdata_i,
+    .ssr_wdata_o,
 //---------------------------------------------------------------------------------
 
     .irq_software_i,

@@ -55,6 +55,9 @@ module cve2_cs_registers #(
 //---------------------------------------------------------------------------------
   //To co-processor.
   output logic [31:0]          csr_vec_mode_o, 
+
+  //CSR
+  output logic [31:0]          csr_ssr_cfg_o,
 //---------------------------------------------------------------------------------
 
 
@@ -199,6 +202,12 @@ import cve2_pkg::*;
   logic        vec_mode_en;
   assign       vec_mode_d = csr_wdata_i;
   assign       csr_vec_mode_o = vec_mode_q;
+
+  logic [31:0] ssr_cfg_d, ssr_cfg_q;
+  logic        ssr_cfg_en;
+  assign       ssr_cfg_d = csr_wdata_i;
+  assign       csr_ssr_cfg_o = ssr_cfg_q;
+
 //---------------------------------------------------------------------------------
 
   // CSRs for recoverable NMIs
@@ -485,6 +494,10 @@ import cve2_pkg::*;
       CSR_VEC_MODE: begin
         csr_rdata_int = vec_mode_q;
       end
+
+      CSR_CPUCTRL: begin
+        csr_rdata_int = ssr_cfg_q;
+      end
 //---------------------------------------------------------------------------------
 
       default: begin
@@ -520,6 +533,7 @@ import cve2_pkg::*;
 
 //---------------------------------------------------------------------------------
     vec_mode_en  = 1'b0;
+    ssr_cfg_en   = 1'b0;
 //---------------------------------------------------------------------------------
     mtval_d      = csr_wdata_int;
     mtvec_en     = csr_mtvec_init_i;
@@ -578,6 +592,7 @@ import cve2_pkg::*;
 
 //---------------------------------------------------------------------------------
         CSR_VEC_MODE: vec_mode_en = 1'b1;
+        CSR_CPUCTRL:  ssr_cfg_en  = 1'b1;
 //---------------------------------------------------------------------------------
 
         // mtvec
@@ -899,6 +914,18 @@ import cve2_pkg::*;
     .wr_data_i (vec_mode_d),
     .wr_en_i   (vec_mode_en),
     .rd_data_o (vec_mode_q),
+    .rd_error_o()
+  );
+
+  cve2_csr #(
+    .Width     (32),
+    .ResetValue(32'd0)
+  ) u_ssr_cfg_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (ssr_cfg_d),
+    .wr_en_i   (ssr_cfg_en),
+    .rd_data_o (ssr_cfg_q),
     .rd_error_o()
   );
 //---------------------------------------------------------------------------------

@@ -13,12 +13,13 @@
  * Top level module of the ibex RISC-V core
  */
 module cve2_top import cve2_pkg::*; #(
-  parameter int unsigned MHPMCounterNum   = 0,
-  parameter int unsigned MHPMCounterWidth = 40,
-  parameter bit          RV32E            = 1'b0,
-  parameter rv32m_e      RV32M            = RV32MFast,
-  parameter int unsigned DmHaltAddr       = 32'h1A110800,
-  parameter int unsigned DmExceptionAddr  = 32'h1A110808
+  parameter int unsigned MHPMCounterNum       = 0,
+  parameter int unsigned MHPMCounterWidth     = 40,
+  parameter bit          RV32E                = 1'b0,
+  parameter rv32m_e      RV32M                = RV32MFast,
+  parameter int unsigned DmHaltAddr           = 32'h1A110800,
+  parameter int unsigned DmExceptionAddr      = 32'h1A110808,
+  parameter logic [NUM_SSR-1:0][4:0] SSR_ADDR = '{5'd30, 5'd31} // Example: reg 17 has stream semantics, NUM_SSR = 1
 ) (
   // Clock and Reset
   input  logic                         clk_i,
@@ -50,17 +51,24 @@ module cve2_top import cve2_pkg::*; #(
   input  logic                         data_err_i,
 
 //---------------------------------------------------------------------------------
-// CV-X-IF.
-  // Issue interface.
+  // CV-X-IF.
+  // Issue interface
   rvv_cv_x_if.cv_x_if_issue_mst        xcs_cv_x_if_issue,
-  // Register interface.
+  // Register interface
   rvv_cv_x_if.cv_x_if_register_mst     xcs_cv_x_if_register,
-  // Commit interface.
+  // Commit interface
   rvv_cv_x_if.cv_x_if_commit_mst       xcs_cv_x_if_commit,
-  // Result interface.
+  // Result interface
   rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
-  // CSR vec mode.
+  // CSR vec mode
   status_if.mst                        csr_vec_mode,
+
+  // SSR interfaces
+  output logic [NUM_RF_PORT-1:0]                      ssr_valid_o,
+  input  logic [NUM_RF_PORT-1:0]                      ssr_ready_i,
+  output logic [NUM_RF_PORT-1:0][4:0]                 ssr_addr_o,
+  input  logic [NUM_RF_READ_PORT-1:0][31:0]  ssr_rdata_i,
+  output logic [NUM_RF_WRITE_PORT-1:0][31:0] ssr_wdata_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -175,7 +183,8 @@ module cve2_top import cve2_pkg::*; #(
     .DbgTriggerEn     (DbgTriggerEn),
     .DbgHwBreakNum    (DbgHwBreakNum),
     .DmHaltAddr       (DmHaltAddr),
-    .DmExceptionAddr  (DmExceptionAddr)
+    .DmExceptionAddr  (DmExceptionAddr),
+    .SSR_ADDR         (SSR_ADDR)
   ) u_cve2_core (
     .clk_i(clk),
     .rst_ni,
@@ -213,6 +222,13 @@ module cve2_top import cve2_pkg::*; #(
     .xcs_cv_x_if_result,
     // CSR vec mode.
     .csr_vec_mode,
+
+    // SSR interfaces
+    .ssr_valid_o,
+    .ssr_ready_i,
+    .ssr_addr_o,
+    .ssr_rdata_i,
+    .ssr_wdata_o,
 //---------------------------------------------------------------------------------
 
     .irq_software_i,
