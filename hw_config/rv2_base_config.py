@@ -28,8 +28,8 @@ rv2_base = {
       "rtl/cve2_wb.sv",
       "rtl/cve2_core.sv",
       "rtl/cve2_top.sv",
-      "rtl/cve2_top_tracing.sv",
-      "rtl/cve2_tracer.sv",
+      #"rtl/cve2_top_tracing.sv",
+      #"rtl/cve2_tracer.sv",
       "bhv/cve2_sim_clock_gate.sv",
    ],
 
