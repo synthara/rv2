@@ -36,6 +36,7 @@ module cve2_register_file_ff_wrp #(
 
 //---------------------------------------------------------------------------------
   // SSR FSM signals
+  input  logic                        instr_valid_i,
   input  logic [DataWidth-1:0]        csr_ssr_cfg_i,
   output logic [NUM_RF_PORT-1:0]      ssr_stall_rf_o,
 
@@ -51,7 +52,18 @@ module cve2_register_file_ff_wrp #(
 
 // Unify address signals
 logic [NUM_RF_PORT-1:0][4:0] rf_addr;
-always_comb rf_addr = {waddr_b_i, waddr_a_i, raddr_c_i, raddr_b_i, raddr_a_i};
+logic [4:0] rf_waddr_b;
+always_comb begin
+    if(|csr_ssr_cfg_i) begin
+        rf_waddr_b = '0;
+    end
+    else begin
+        rf_waddr_b = waddr_b_i;
+    end
+
+end
+
+always_comb rf_addr = {rf_waddr_b, waddr_a_i, raddr_c_i, raddr_b_i, raddr_a_i};
 
 // Write ports signals
 logic [NUM_RF_WRITE_PORT-1:0][DataWidth-1:0] rf_wdata; 
@@ -103,7 +115,7 @@ for(genvar RF_READ_PORT_IDX = 0; RF_READ_PORT_IDX < NUM_RF_READ_PORT; RF_READ_PO
         unique case(ssr_req_q[RF_READ_PORT_IDX])
             SSR_ASSERT_REQ: begin  
                 ssr_req_d[RF_READ_PORT_IDX] = SSR_ASSERT_REQ;
-                if(|csr_ssr_cfg_i && is_addr_ssr[RF_READ_PORT_IDX]) begin
+                if(|csr_ssr_cfg_i && is_addr_ssr[RF_READ_PORT_IDX] && instr_valid_i) begin
                     ssr_valid_o[RF_READ_PORT_IDX] = '1;
                     rf_rdata_mux_sel[RF_READ_PORT_IDX] = '1;
                     if(!ssr_ready_i[RF_READ_PORT_IDX]) begin
@@ -154,7 +166,7 @@ for(genvar RF_WRITE_PORT_IDX = 0; RF_WRITE_PORT_IDX < NUM_RF_WRITE_PORT; RF_WRIT
         unique case(ssr_req_q[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX])
             SSR_ASSERT_REQ: begin  
                 ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = SSR_ASSERT_REQ;
-                if(|csr_ssr_cfg_i && is_addr_ssr[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]) begin
+                if(|csr_ssr_cfg_i && is_addr_ssr[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] && instr_valid_i) begin
                     ssr_valid_o[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '1;
                     rf_we[RF_WRITE_PORT_IDX] = '0;
                     if(!ssr_ready_i[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]) begin
@@ -191,6 +203,7 @@ always_comb ssr_addr_o = rf_addr;
 always_comb ssr_wdata_o = rf_wdata;
 
 logic [DataWidth-1:0] rf_rdata_a, rf_rdata_b, rf_rdata_c;
+
 cve2_register_file_ff cve2_register_file_ff_inst (
   .clk_i(clk_i),
   .rst_ni(rst_ni),

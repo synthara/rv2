@@ -69,11 +69,14 @@ module cve2_core import cve2_pkg::*; #(
   status_if.mst                        csr_vec_mode,
 
   // SSR interfaces
-  output logic [NUM_RF_PORT-1:0]                      ssr_valid_o,
-  input  logic [NUM_RF_PORT-1:0]                      ssr_ready_i,
-  output logic [NUM_RF_PORT-1:0][4:0]                 ssr_addr_o,
+  output logic [NUM_RF_PORT-1:0]             ssr_valid_o,
+  input  logic [NUM_RF_PORT-1:0]             ssr_ready_i,
+  output logic [NUM_RF_PORT-1:0][4:0]        ssr_addr_o,
   input  logic [NUM_RF_READ_PORT-1:0][31:0]  ssr_rdata_i,
   output logic [NUM_RF_WRITE_PORT-1:0][31:0] ssr_wdata_o,
+
+  // SSR config CSR register 
+  output logic [31:0] csr_ssr_cfg_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
@@ -878,6 +881,7 @@ module cve2_core import cve2_pkg::*; #(
 
 //---------------------------------------------------------------------------------
     // SSR FSM signals
+    .instr_valid_i(instr_valid_id),
     .csr_ssr_cfg_i(csr_ssr_cfg),
     .ssr_stall_rf_o(ssr_stall_rf),
 
@@ -993,6 +997,8 @@ module cve2_core import cve2_pkg::*; #(
     .wfi_wait_i                 (perf_wfi_wait),
     .div_wait_i                 (perf_div_wait)
   );
+
+  always_comb csr_ssr_cfg_o = csr_ssr_cfg;
 
   // These assertions are in top-level as instr_valid_id required as the enable term
   `ASSERT(IbexCsrOpValid, instr_valid_id |-> csr_op inside {
