@@ -50,8 +50,6 @@ module cve2_register_file_ff_wrp #(
 
 );
 
-// Unify address signals
-logic [NUM_RF_PORT-1:0][4:0] rf_addr;
 logic [4:0] rf_waddr_b;
 always_comb begin
     if(|csr_ssr_cfg_i) begin
@@ -64,7 +62,6 @@ always_comb begin
 end
 
 logic [4:0] rf_raddr_c;
-
 always_comb begin
     if(|csr_ssr_cfg_i) begin
         rf_raddr_c = '0;
@@ -72,9 +69,9 @@ always_comb begin
     else begin
         rf_raddr_c = raddr_c_i;
     end
-
 end
 
+logic [NUM_RF_PORT-1:0][4:0] rf_addr;
 always_comb rf_addr = {rf_waddr_b, waddr_a_i, rf_raddr_c, raddr_b_i, raddr_a_i};
 
 // Write ports signals
@@ -88,128 +85,33 @@ always_comb rf_we_dec = {we_b_i, we_a_i};
 logic [NUM_RF_PORT-1:0] is_addr_ssr;
 always_comb begin
     is_addr_ssr = '0;
-    for(int RF_PORT_IDX = 0; RF_PORT_IDX < NUM_RF_PORT; RF_PORT_IDX++) begin
-        for(int SSR_ADDR_IDX = 0; SSR_ADDR_IDX < NUM_SSR; SSR_ADDR_IDX++) begin
-            if(rf_addr[RF_PORT_IDX] == SSR_ADDR[SSR_ADDR_IDX]) begin
-                is_addr_ssr[RF_PORT_IDX] = '1;
+    if(|csr_ssr_cfg_i && instr_valid_i) begin
+        for(int RF_PORT_IDX = 0; RF_PORT_IDX < NUM_RF_PORT; RF_PORT_IDX++) begin
+            for(int SSR_ADDR_IDX = 0; SSR_ADDR_IDX < NUM_SSR; SSR_ADDR_IDX++) begin
+                unique if(rf_addr[RF_PORT_IDX] == SSR_ADDR[SSR_ADDR_IDX]) begin
+                    is_addr_ssr[RF_PORT_IDX] = '1;
+                end
             end
         end
     end
 end
 
-// FSM instances
-typedef enum logic {IDLE, WAIT_READY} ssr_req_t;
-ssr_req_t ssr_req_d [NUM_RF_PORT-1:0];
-ssr_req_t ssr_req_q [NUM_RF_PORT-1:0];
+for(genvar RF_PORT_IDX = 0; RF_PORT_IDX < NUM_RF_PORT; RF_PORT_IDX++) begin
+    always_comb ssr_valid_o[RF_PORT_IDX] = is_addr_ssr[RF_PORT_IDX];
+    always_comb ssr_stall_rf_o[RF_PORT_IDX] = is_addr_ssr[RF_PORT_IDX] && ~ssr_ready_i[RF_PORT_IDX];
+end
 
-logic [NUM_RF_PORT-1:0] ssr_stall_rf;
-
-// Read ports
 logic [NUM_RF_READ_PORT-1:0] rf_rdata_mux_sel;
-
 for(genvar RF_READ_PORT_IDX = 0; RF_READ_PORT_IDX < NUM_RF_READ_PORT; RF_READ_PORT_IDX++) begin
-
-    always_ff@(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            ssr_req_q[RF_READ_PORT_IDX] <= IDLE;
-        end
-        else begin
-            ssr_req_q[RF_READ_PORT_IDX] <= ssr_req_d[RF_READ_PORT_IDX];
-        end
-    end
-
-    always_comb begin
-        ssr_valid_o[RF_READ_PORT_IDX]      = '0;
-        ssr_stall_rf[RF_READ_PORT_IDX]     = '0;
-        rf_rdata_mux_sel[RF_READ_PORT_IDX] = '0;
-
-        unique case(ssr_req_q[RF_READ_PORT_IDX])
-            IDLE: begin  
-                ssr_req_d[RF_READ_PORT_IDX] = IDLE;
-                if(|csr_ssr_cfg_i && is_addr_ssr[RF_READ_PORT_IDX] && instr_valid_i) begin
-                    ssr_valid_o[RF_READ_PORT_IDX] = '1;
-                    rf_rdata_mux_sel[RF_READ_PORT_IDX] = '1;
-                    if(!ssr_ready_i[RF_READ_PORT_IDX]) begin
-                        ssr_req_d[RF_READ_PORT_IDX] = WAIT_READY;
-                        ssr_stall_rf[RF_READ_PORT_IDX] = '1;
-                    end
-                end    
-            end
-            WAIT_READY: begin
-                ssr_req_d[RF_READ_PORT_IDX] = WAIT_READY;
-                rf_rdata_mux_sel[RF_READ_PORT_IDX] = '1;
-                ssr_valid_o[RF_READ_PORT_IDX] = '1;
-                ssr_stall_rf[RF_READ_PORT_IDX] = '1;
-                if(ssr_ready_i[RF_READ_PORT_IDX]) begin
-                    ssr_stall_rf[RF_READ_PORT_IDX] = '0;
-                    ssr_req_d[RF_READ_PORT_IDX] = IDLE;
-                end
-            end
-            default: begin
-                ssr_req_d[RF_READ_PORT_IDX]        = IDLE;
-                ssr_valid_o[RF_READ_PORT_IDX]      = '0;
-                ssr_stall_rf[RF_READ_PORT_IDX]     = '0;
-                rf_rdata_mux_sel[RF_READ_PORT_IDX] = '0;
-            end
-        endcase
-    end
+    always_comb rf_rdata_mux_sel[RF_READ_PORT_IDX] = is_addr_ssr[RF_READ_PORT_IDX];
 end
 
-// Write ports
 logic [NUM_RF_WRITE_PORT-1:0] rf_we;
-
 for(genvar RF_WRITE_PORT_IDX = 0; RF_WRITE_PORT_IDX < NUM_RF_WRITE_PORT; RF_WRITE_PORT_IDX++) begin
-
-    always_ff@(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            ssr_req_q[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] <= IDLE;
-        end
-        else begin
-            ssr_req_q[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] <= ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX];
-        end
-    end
-
-    always_comb begin
-        ssr_valid_o[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]  = '0;
-        ssr_stall_rf[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '0;
-        rf_we[RF_WRITE_PORT_IDX] = rf_we_dec[RF_WRITE_PORT_IDX];
-        
-        unique case(ssr_req_q[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX])
-            IDLE: begin  
-                ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = IDLE;
-                if(|csr_ssr_cfg_i && is_addr_ssr[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] && instr_valid_i) begin
-                    ssr_valid_o[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '1;
-                    rf_we[RF_WRITE_PORT_IDX] = '0;
-                    if(!ssr_ready_i[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]) begin
-                        ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = WAIT_READY;
-                        ssr_stall_rf[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '1;
-                    end
-                end
-            end
-
-            WAIT_READY: begin
-                ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = WAIT_READY;
-                rf_we[RF_WRITE_PORT_IDX] = '0;
-                if(ssr_ready_i[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]) begin
-                    ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = IDLE;
-                end
-                else begin
-                    ssr_stall_rf[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '1;
-                end  
-            end
-            
-            default: begin
-                ssr_req_d[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]    = IDLE;
-                ssr_valid_o[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX]  = '0;
-                ssr_stall_rf[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] = '0;
-                rf_we[RF_WRITE_PORT_IDX]                           = rf_we_dec[RF_WRITE_PORT_IDX];
-            end
-        endcase
-    end
+    always_comb rf_we[RF_WRITE_PORT_IDX] = is_addr_ssr[NUM_RF_READ_PORT + RF_WRITE_PORT_IDX] ? '0 : rf_we_dec[RF_WRITE_PORT_IDX];
 end
 
-// Output assignments
-always_comb ssr_stall_rf_o = ssr_stall_rf;
+
 always_comb ssr_addr_o = rf_addr;
 always_comb ssr_wdata_o = rf_wdata;
 
