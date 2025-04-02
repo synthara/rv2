@@ -19,7 +19,7 @@ module cve2_top import cve2_pkg::*; #(
   parameter rv32m_e      RV32M                = RV32MFast,
   parameter int unsigned DmHaltAddr           = 32'h1A110800,
   parameter int unsigned DmExceptionAddr      = 32'h1A110808,
-  parameter logic [NUM_SSR-1:0][4:0] SSR_ADDR = '{5'd30} // Example: reg 17 has stream semantics, NUM_SSR = 1
+  parameter logic [NUM_SSR-1:0][4:0] SSR_ADDR = '{5'd28, 5'd29, 5'd30} // Example: reg 17 has stream semantics, NUM_SSR = 1
 ) (
   // Clock and Reset
   input  logic                         clk_i,
