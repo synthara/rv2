@@ -222,7 +222,7 @@ module cve2_id_stage #(
   output logic                      rf_we_b_id_o,
 
   // SSR signal
-  input logic [NUM_RF_PORT-1:0]     ssr_stall_rf_i,
+  input logic [NUM_RF_SSR_PORT-1:0] ssr_stall_rf_i,
 //---------------------------------------------------------------------------------
 
 

@@ -64,11 +64,11 @@ module cve2_top import cve2_pkg::*; #(
   status_if.mst                        csr_vec_mode,
 
   // SSR interfaces
-  output logic [NUM_RF_PORT-1:0]             ssr_valid_o,
-  input  logic [NUM_RF_PORT-1:0]             ssr_ready_i,
-  output logic [NUM_RF_PORT-1:0][4:0]        ssr_addr_o,
-  input  logic [NUM_RF_READ_PORT-1:0][31:0]  ssr_rdata_i,
-  output logic [NUM_RF_WRITE_PORT-1:0][31:0] ssr_wdata_o,
+  output logic [NUM_RF_SSR_PORT-1:0]            ssr_valid_o,
+  input  logic [NUM_RF_SSR_PORT-1:0]            ssr_ready_i,
+  output logic [NUM_RF_SSR_PORT-1:0][4:0]       ssr_addr_o,
+  input  logic [NUM_RF_SSR_READ_PORT-1:0][31:0] ssr_rdata_i,
+  output logic [31:0]                           ssr_wdata_o,
 
   // SSR config CSR register 
   output logic [31:0] csr_ssr_cfg_o,

@@ -69,11 +69,11 @@ module cve2_core import cve2_pkg::*; #(
   status_if.mst                        csr_vec_mode,
 
   // SSR interfaces
-  output logic [NUM_RF_PORT-1:0]             ssr_valid_o,
-  input  logic [NUM_RF_PORT-1:0]             ssr_ready_i,
-  output logic [NUM_RF_PORT-1:0][4:0]        ssr_addr_o,
-  input  logic [NUM_RF_READ_PORT-1:0][31:0]  ssr_rdata_i,
-  output logic [NUM_RF_WRITE_PORT-1:0][31:0] ssr_wdata_o,
+  output logic [NUM_RF_SSR_PORT-1:0]            ssr_valid_o,
+  input  logic [NUM_RF_SSR_PORT-1:0]            ssr_ready_i,
+  output logic [NUM_RF_SSR_PORT-1:0][4:0]       ssr_addr_o,
+  input  logic [NUM_RF_SSR_READ_PORT-1:0][31:0] ssr_rdata_i,
+  output logic [31:0]                           ssr_wdata_o,
 
   // SSR config CSR register 
   output logic [31:0] csr_ssr_cfg_o,
@@ -441,7 +441,7 @@ module cve2_core import cve2_pkg::*; #(
 //---------------------------------------------------------------------------------
   localparam int unsigned N_HWLP = 2;
   localparam int unsigned COPROC_OPCODE = (1 << 30) | (1 << 22) | (1 << 10); //TODO: change this value to let the core recognize all the coprocessor instructions
-  logic [NUM_RF_PORT-1:0] ssr_stall_rf;
+  logic [NUM_RF_SSR_PORT-1:0] ssr_stall_rf;
 //---------------------------------------------------------------------------------
 
 
@@ -870,8 +870,6 @@ module cve2_core import cve2_pkg::*; #(
     .we_a_i   (rf_we_a_wb),
     .waddr_a_i(rf_waddr_a_wb),
     .wdata_a_i(rf_wdata_a_wb),
-    .we_a_i   (rf_we_a_wb),
-
 //---------------------------------------------------------------------------------
     //2nd register file write port signals.
     .we_b_i   (rf_we_b_wb),
