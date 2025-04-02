@@ -113,5 +113,4 @@ cve2_register_file_ff cve2_register_file_ff_inst (
 always_comb rdata_a_o = (rf_rdata_mux_sel[0]) ? ssr_rdata_i[0] : rf_rdata_a;
 always_comb rdata_b_o = (rf_rdata_mux_sel[1]) ? ssr_rdata_i[1] : rf_rdata_b;
 
-
 endmodule
