@@ -52,11 +52,11 @@ logic [NUM_RF_SSR_PORT-1:0][4:0] rf_addr;
 always_comb rf_addr = {waddr_a_i, raddr_b_i, raddr_a_i};
 
 // Write ports signals
-logic [DataWidth-1:0] rf_wdata; 
-logic rf_we_dec;
+logic [DataWidth-1:0] rf_wdata_a; 
+logic rf_we_a_dec;
 
-always_comb rf_wdata = wdata_a_i;
-always_comb rf_we_dec = we_a_i;
+always_comb rf_wdata_a = wdata_a_i;
+always_comb rf_we_a_dec = we_a_i;
 
 // Check if the register has stream semantics
 logic [NUM_RF_SSR_PORT-1:0] is_addr_ssr;
@@ -83,11 +83,11 @@ for(genvar RF_SSR_READ_PORT_IDX = 0; RF_SSR_READ_PORT_IDX < NUM_RF_SSR_READ_PORT
     always_comb rf_rdata_mux_sel[RF_SSR_READ_PORT_IDX] = is_addr_ssr[RF_SSR_READ_PORT_IDX];
 end
 
-logic rf_we;
-always_comb rf_we = is_addr_ssr[NUM_RF_SSR_PORT-1] ? '0 : rf_we_dec;
+logic rf_we_a;
+always_comb rf_we_a = is_addr_ssr[NUM_RF_SSR_PORT-1] ? '0 : rf_we_a_dec;
 
 always_comb ssr_addr_o = rf_addr;
-always_comb ssr_wdata_o = rf_wdata;
+always_comb ssr_wdata_o = rf_wdata_a;
 
 logic [DataWidth-1:0] rf_rdata_a, rf_rdata_b;
 
@@ -103,10 +103,10 @@ cve2_register_file_ff cve2_register_file_ff_inst (
   .rdata_c_o(rdata_c_o),
   .waddr_a_i(waddr_a_i),
   .wdata_a_i(wdata_a_i),
-  .we_a_i(rf_we),
+  .we_a_i(rf_we_a),
   .waddr_b_i(waddr_b_i),
   .wdata_b_i(wdata_b_i),
-  .we_b_i(rf_we)
+  .we_b_i(we_b_i)
 );
 
 // Read port output MUX
