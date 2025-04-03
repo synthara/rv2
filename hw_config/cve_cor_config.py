@@ -3,12 +3,6 @@ cve_cor = {
 
     "rtl_files": [  
         "rtl/cve2_pkg.sv",
-        "pkg/rvv_autogen_specs_pkg.sv",
-        "pkg/rvv_autogen_params_pkg.sv",
-        "pkg/rvv_autogen_enums_pkg.sv",
-        "pkg/rvv_autogen_dtypes_pkg.sv",
-        "pkg/rvv_autogen_structs_pkg.sv",
-        "pkg/rvv_cv_x_if.sv",
         "vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv",
         "vendor/lowrisc_ip/ip/prim/rtl/prim_ram_1p_pkg.sv",
         "rtl/cve2_alu.sv",
@@ -20,6 +14,7 @@ cve_cor = {
         "rtl/cve2_decoder.sv",
         "rtl/cve2_ex_block.sv",
         "rtl/cve2_fetch_fifo.sv",
+        "rtl/cve2_hwloop_regs",
         "rtl/cve2_id_stage.sv",
         "rtl/cve2_if_stage.sv",
         "rtl/cve2_load_store_unit.sv",
@@ -28,6 +23,9 @@ cve_cor = {
         "rtl/cve2_prefetch_buffer.sv",
         "rtl/cve2_pmp.sv",
         "rtl/cve2_register_file_ff.sv",
+        "rtl/cve2_register_file_ff_wrp.sv",
+        "rtl/cve2_wb.sv",
+        "bhv/cve2_sim_clock_gate.sv",
         "rtl/cve2_core.sv",
         
         "vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv",
