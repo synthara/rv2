@@ -43,27 +43,27 @@ module cve_cor_wrp (
     //---------------------------------------------------------------------------------
     // CV-X-IF.
     // Issue interface
-    input  var logic                                  issue_valid,
-    output var logic                                  issue_ready,
-    input  var logic[$bits(x_issue_req_t_dtype)-1:0]  issue_req_flatten,
-    output var logic[$bits(x_issue_resp_t_dtype)-1:0] issue_resp_flatten,
+    output var logic                                  issue_valid,
+    input  var logic                                  issue_ready,
+    output var logic[$bits(x_issue_req_t_dtype)-1:0]  issue_req_flatten,
+    input  var logic[$bits(x_issue_resp_t_dtype)-1:0] issue_resp_flatten,
 
     //CV-X-IF Register interface signals.
-    input  var logic                                  register_valid,
-    output var logic                                  register_ready,
-    input  var logic[$bits(x_register_t_dtype)-1:0]   register_flatten,
+    output var logic                                  register_valid,
+    input  var logic                                  register_ready,
+    output var logic[$bits(x_register_t_dtype)-1:0]   register_flatten,
 
     //CV-X-IF Commit interface signals.
-    input  var logic                                  commit_valid,
-    input  var logic[$bits(x_commit_t_dtype)-1:0]     commit_flatten,
+    output var logic                                  commit_valid,
+    output var logic[$bits(x_commit_t_dtype)-1:0]     commit_flatten,
 
     //CV-X-IF Result interface signals.
-    input  var logic                                  result_ready,
-    output var logic                                  result_valid,
-    output var logic[$bits(x_result_t_dtype)-1:0]     result_flatten,
+    output var logic                                  result_ready,
+    input  var logic                                  result_valid,
+    input  var logic[$bits(x_result_t_dtype)-1:0]     result_flatten,
 
     //CSR vec mode.
-    input  var logic[$bits(data_csr_dtype)-1:0]       csr_vec_mode_flatten,
+    output var logic[$bits(data_csr_dtype)-1:0]       csr_vec_mode_flatten,
 
     // SSR interfaces
     output var logic [NUM_RF_SSR_PORT-1:0]            ssr_valid_o,
@@ -106,49 +106,43 @@ end
 
 //Interfaces definitions.
 snt_std_if  xcs_std();
-rvv_cv_x_if xcs_cv_x_if_issue();
-rvv_cv_x_if xcs_cv_x_if_register();
-rvv_cv_x_if xcs_cv_x_if_commit();
-rvv_cv_x_if xcs_cv_x_if_result();
+rvv_cv_x_if xcs_cv_x_if();
 status_if#(.DTYPE(data_csr_dtype)) csr_vec_mode();
 
-//Flatten to Packed conversion.
-data_csr_dtype csr_vec_mode_packet;
-always_comb csr_vec_mode_packet = csr_vec_mode_flatten;
-
 //std if connections.
-always_comb xcs_std.clk                         = clk_i;
-always_comb xcs_std.resetn                      = rst_ni;
+always_comb xcs_std.clk    = clk;
+always_comb xcs_std.resetn = resetn;
 
-//Issue interface connections.
-always_comb xcs_cv_x_if_issue.issue_valid       = issue_valid;
-always_comb issue_ready                         = xcs_cv_x_if_issue.issue_ready;
-always_comb xcs_cv_x_if_issue.issue_req         = issue_req_flatten;
-always_comb issue_resp_flatten                  = xcs_cv_x_if_issue.issue_resp;
+// Issue interface connections
+always_comb issue_valid             = xcs_cv_x_if.issue_valid;
+always_comb xcs_cv_x_if.issue_ready = issue_ready;
+always_comb issue_req_flatten       = xcs_cv_x_if.issue_req;
+always_comb xcs_cv_x_if.issue_resp  = issue_resp_flatten;
 
-//Register interface connections.
-always_comb xcs_cv_x_if_register.register_valid = register_valid;
-always_comb register_ready                      = xcs_cv_x_if_register.register_ready;
-always_comb xcs_cv_x_if_register.register       = register_flatten;
+// Register interface connections
+always_comb register_valid             = xcs_cv_x_if.register_valid;
+always_comb xcs_cv_x_if.register_ready = register_ready;
+always_comb register_flatten           = xcs_cv_x_if.register;
 
-//Commit interface connections.
-always_comb xcs_cv_x_if_commit.commit_valid     = commit_valid;
-always_comb xcs_cv_x_if_commit.commit           = commit_flatten;
+// Commit interface connections
+always_comb commit_valid   = xcs_cv_x_if.commit_valid;
+always_comb commit_flatten = xcs_cv_x_if.commit;
 
-//Result interface connections.
-always_comb xcs_cv_x_if_result.result_ready     = result_ready;
-always_comb result_valid                        = xcs_cv_x_if_result.result_valid;
-always_comb result_flatten                      = xcs_cv_x_if_result.result;
+// Result interface connections
+always_comb xcs_cv_x_if.result_valid = result_valid;
+always_comb result_ready             = xcs_cv_x_if.result_ready;
+always_comb xcs_cv_x_if.result       = result_flatten;
+
 
 //CSR status interface.
-always_comb csr_vec_mode.packet                 = csr_vec_mode_packet;
+always_comb csr_vec_mode_flatten = csr_vec_mode.packet;;
 
 crash_dump_t crash_dump;
 always_comb begin
-  crash_dump.current_pc = current_pc;
-  crash_dump.next_pc = next_pc;
-  crash_dump.last_data_addr = last_data_addr;
-  crash_dump.exception_addr = exception_addr;
+  current_pc      = crash_dump.current_pc;
+  next_pc         = crash_dump.next_pc;
+  last_data_addr  = crash_dump.last_data_addr;
+  exception_addr  = crash_dump.exception_addr;
 end
 
 
@@ -188,14 +182,10 @@ cve2_top i_cve2_top (
 
 //---------------------------------------------------------------------------------
   // CV-X-IF.
-  // Issue interface
-  .xcs_cv_x_if_issue(xcs_cv_x_if_issue),
-  // Register interface
-  .xcs_cv_x_if_register(xcs_cv_x_if_register),
-  // Commit interface
-  .xcs_cv_x_if_commit(xcs_cv_x_if_commit),
-  // Result interface
-  .xcs_cv_x_if_result(xcs_cv_x_if_result),
+  .xcs_cv_x_if_issue(xcs_cv_x_if.cv_x_if_issue_mst),
+  .xcs_cv_x_if_register(xcs_cv_x_if.cv_x_if_register_mst),
+  .xcs_cv_x_if_commit(xcs_cv_x_if.cv_x_if_commit_mst),
+  .xcs_cv_x_if_result(xcs_cv_x_if.cv_x_if_result_mst),
   // CSR vec mode
   .csr_vec_mode(csr_vec_mode),
 
