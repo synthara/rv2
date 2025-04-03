@@ -4,8 +4,8 @@ import cve2_pkg::*;
 
 module cve_cor_wrp (
     // Clock and Reset
-    input  var logic                         clk_i,
-    input  var logic                         rst_ni,
+    input  var logic                         clk,
+    input  var logic                         resetn,
 
     input  var logic                         test_en_i,     // enable all clock gates for testing
     input  var logic[3:0]                    ram_cfg_i,      
@@ -74,8 +74,8 @@ end
 cve2_top i_cve2_top (
 
   // Clock and Reset
-  .clk_i(clk_i),
-  .rst_ni(rst_ni),
+  .clk_i(clk),
+  .rst_ni(resetn),
 
   .test_en_i(test_en_i),     // enable all clock gates for testing
   .ram_cfg_i(ram_cfg),
