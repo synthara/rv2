@@ -197,6 +197,7 @@ module cve2_top import cve2_pkg::*; #(
     .DbgHwBreakNum    (DbgHwBreakNum),
     .DmHaltAddr       (DmHaltAddr),
     .DmExceptionAddr  (DmExceptionAddr),
+    .XInterface       (XInterface),
     .SSR_ADDR         (SSR_ADDR)
   ) u_cve2_core (
     .clk_i(clk),

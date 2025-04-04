@@ -875,6 +875,13 @@ module cve2_decoder #(
 
                 default: begin
                     illegal_insn            = 1'b1;
+                    // Core-V Extension Interface (CV-X-IF)
+                    if(XInterface) begin
+                      rf_ren_a_o            = x_issue_resp_register_read_i[0];     
+                      rf_ren_b_o            = x_issue_resp_register_read_i[1];           
+                      rf_we_a               = x_issue_resp_writeback_i;                          
+                      rf_wdata_sel_o        = RF_WD_COPROC;
+                    end
               end
             endcase
           end

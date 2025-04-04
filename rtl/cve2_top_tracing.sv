@@ -12,7 +12,8 @@ module cve2_top_tracing import cve2_pkg::*; #(
   parameter bit          RV32E            = 1'b0,
   parameter rv32m_e      RV32M            = RV32MFast,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
-  parameter int unsigned DmExceptionAddr  = 32'h1A110808
+  parameter int unsigned DmExceptionAddr  = 32'h1A110808,
+  parameter bit          XInterface       = 1'b0
 ) (
   // Clock and Reset
   input  logic                                 clk_i,
@@ -144,7 +145,8 @@ module cve2_top_tracing import cve2_pkg::*; #(
     .RV32E            ( RV32E            ),
     .RV32M            ( RV32M            ),
     .DmHaltAddr       ( DmHaltAddr       ),
-    .DmExceptionAddr  ( DmExceptionAddr  )
+    .DmExceptionAddr  ( DmExceptionAddr  ),
+    .XInterface       ( XInterface       )
   ) u_cve2_top (
     .clk_i,
     .rst_ni,
