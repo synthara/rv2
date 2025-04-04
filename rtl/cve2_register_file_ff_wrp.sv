@@ -35,7 +35,7 @@ module cve2_register_file_ff_wrp import cve2_pkg::*; #(
 //---------------------------------------------------------------------------------
   // SSR FSM signals
   input  logic                       instr_valid_i,
-  input  logic [DataWidth-1:0]       csr_ssr_cfg_i,
+  input  logic [DataWidth-1:0]       csr_ssr_start_i,
   output logic [NUM_RF_SSR_PORT-1:0] ssr_stall_rf_o,
 
   // SSR interfaces
@@ -62,7 +62,7 @@ always_comb rf_we_a_dec = we_a_i;
 logic [NUM_RF_SSR_PORT-1:0] is_addr_ssr;
 always_comb begin
     is_addr_ssr = '0;
-    if(|csr_ssr_cfg_i && instr_valid_i) begin
+    if(|csr_ssr_start_i && instr_valid_i) begin
         for(int RF_SSR_PORT_IDX = 0; RF_SSR_PORT_IDX < NUM_RF_SSR_PORT; RF_SSR_PORT_IDX++) begin
             for(int SSR_ADDR_IDX = 0; SSR_ADDR_IDX < NUM_SSR; SSR_ADDR_IDX++) begin
                 unique if(rf_addr[RF_SSR_PORT_IDX] == SSR_ADDR[SSR_ADDR_IDX]) begin

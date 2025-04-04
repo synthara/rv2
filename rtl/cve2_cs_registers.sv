@@ -57,7 +57,7 @@ module cve2_cs_registers #(
   output logic [31:0]          csr_vec_mode_o, 
 
   //CSR
-  output logic [31:0]          csr_ssr_cfg_o,
+  output logic [31:0]          csr_ssr_start_o,
 //---------------------------------------------------------------------------------
 
 
@@ -203,10 +203,10 @@ import cve2_pkg::*;
   assign       vec_mode_d = csr_wdata_i;
   assign       csr_vec_mode_o = vec_mode_q;
 
-  logic [31:0] ssr_cfg_d, ssr_cfg_q;
-  logic        ssr_cfg_en;
-  assign       ssr_cfg_d = csr_wdata_i;
-  assign       csr_ssr_cfg_o = ssr_cfg_q;
+  logic [31:0] ssr_start_d, ssr_start_q;
+  logic        ssr_start_en;
+  assign       ssr_start_d = csr_wdata_i;
+  assign       csr_ssr_start_o = ssr_start_q;
 
 //---------------------------------------------------------------------------------
 
@@ -496,7 +496,7 @@ import cve2_pkg::*;
       end
 
       CSR_CPUCTRL: begin
-        csr_rdata_int = ssr_cfg_q;
+        csr_rdata_int = ssr_start_q;
       end
 //---------------------------------------------------------------------------------
 
@@ -533,7 +533,7 @@ import cve2_pkg::*;
 
 //---------------------------------------------------------------------------------
     vec_mode_en  = 1'b0;
-    ssr_cfg_en   = 1'b0;
+    ssr_start_en = 1'b0;
 //---------------------------------------------------------------------------------
     mtval_d      = csr_wdata_int;
     mtvec_en     = csr_mtvec_init_i;
@@ -590,10 +590,11 @@ import cve2_pkg::*;
         // mtval: trap value
         CSR_MTVAL: mtval_en = 1'b1;
 
-//---------------------------------------------------------------------------------
+        // It decides the parallelism of the coprocessor
         CSR_VEC_MODE: vec_mode_en = 1'b1;
-        CSR_CPUCTRL:  ssr_cfg_en  = 1'b1;
-//---------------------------------------------------------------------------------
+
+        // It enables a certain AGU
+        CSR_CPUCTRL:  ssr_start_en = 1'b1;
 
         // mtvec
         CSR_MTVEC: mtvec_en = 1'b1;
@@ -923,9 +924,9 @@ import cve2_pkg::*;
   ) u_ssr_cfg_csr (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .wr_data_i (ssr_cfg_d),
-    .wr_en_i   (ssr_cfg_en),
-    .rd_data_o (ssr_cfg_q),
+    .wr_data_i (ssr_start_d),
+    .wr_en_i   (ssr_start_en),
+    .rd_data_o (ssr_start_q),
     .rd_error_o()
   );
 //---------------------------------------------------------------------------------

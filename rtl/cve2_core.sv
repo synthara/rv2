@@ -25,71 +25,80 @@ module cve2_core import cve2_pkg::*; #(
   parameter int unsigned DbgHwBreakNum        = 1,
   parameter int unsigned DmHaltAddr           = 32'h1A110800,
   parameter int unsigned DmExceptionAddr      = 32'h1A110808,
+  parameter bit          XInterface           = 1'b0,
   parameter logic [NUM_SSR-1:0][4:0] SSR_ADDR = '0
 ) (
   // Clock and Reset
-  input  logic                         clk_i,
-  input  logic                         rst_ni,
+  input  logic                                  clk_i,
+  input  logic                                  rst_ni,
 
-  input  logic                         test_en_i,
+  input  logic                                  test_en_i,
 
-  input  logic [31:0]                  hart_id_i,
-  input  logic [31:0]                  boot_addr_i,
+  input  logic [31:0]                           hart_id_i,
+  input  logic [31:0]                           boot_addr_i,
 
   // Instruction memory interface
-  output logic                         instr_req_o,
-  input  logic                         instr_gnt_i,
-  input  logic                         instr_rvalid_i,
-  output logic [31:0]                  instr_addr_o,
-  input  logic [31:0]                  instr_rdata_i,
-  input  logic                         instr_err_i,
+  output logic                                  instr_req_o,
+  input  logic                                  instr_gnt_i,
+  input  logic                                  instr_rvalid_i,
+  output logic [31:0]                           instr_addr_o,
+  input  logic [31:0]                           instr_rdata_i,
+  input  logic                                  instr_err_i,
 
   // Data memory interface
-  output logic                         data_req_o,
-  input  logic                         data_gnt_i,
-  input  logic                         data_rvalid_i,
-  output logic                         data_we_o,
-  output logic [3:0]                   data_be_o,
-  output logic [31:0]                  data_addr_o,
-  output logic [31:0]                  data_wdata_o,
-  input  logic [31:0]                  data_rdata_i,
-  input  logic                         data_err_i,
+  output logic                                  data_req_o,
+  input  logic                                  data_gnt_i,
+  input  logic                                  data_rvalid_i,
+  output logic                                  data_we_o,
+  output logic [3:0]                            data_be_o,
+  output logic [31:0]                           data_addr_o,
+  output logic [31:0]                           data_wdata_o,
+  input  logic [31:0]                           data_rdata_i,
+  input  logic                                  data_err_i,
 
-//---------------------------------------------------------------------------------
-  // CV-X-IF
-  // Issue interface
-  rvv_cv_x_if.cv_x_if_issue_mst        xcs_cv_x_if_issue,
-  // Register interface
-  rvv_cv_x_if.cv_x_if_register_mst     xcs_cv_x_if_register,
-  // Commit interface
-  rvv_cv_x_if.cv_x_if_commit_mst       xcs_cv_x_if_commit,
-  // Result interface
-  rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
+  // Core-V eXtension Interface
+  // Issue Interface
+  output logic                                  x_issue_valid_o,
+  input  logic                                  x_issue_ready_i,
+  output x_issue_req_t                          x_issue_req_o,
+  input  x_issue_resp_t                         x_issue_resp_i,
+
+  // Register Interface   
+  output x_register_t                           x_register_o,
+
+  // Commit Interface   
+  output logic                                  x_commit_valid_o,
+  output x_commit_t                             x_commit_o,
+
+  // Result Interface   
+  input  logic                                  x_result_valid_i,
+  output logic                                  x_result_ready_o,
+  input  x_result_t                             x_result_i,
+
   // CSR vec mode
-  status_if.mst                        csr_vec_mode,
+  output logic [DATA_WIDTH-1:0]                 csr_vec_mode_o,
 
   // SSR interfaces
   output logic [NUM_RF_SSR_PORT-1:0]            ssr_valid_o,
   input  logic [NUM_RF_SSR_PORT-1:0]            ssr_ready_i,
   output logic [NUM_RF_SSR_PORT-1:0][4:0]       ssr_addr_o,
   input  logic [NUM_RF_SSR_READ_PORT-1:0][31:0] ssr_rdata_i,
-  output logic [31:0]                           ssr_wdata_o,
+  output logic [DATA_WIDTH-1:0]                 ssr_wdata_o,
 
-  // SSR config CSR register 
-  output logic [31:0] csr_ssr_cfg_o,
-//---------------------------------------------------------------------------------
+  // SSR CSR register 
+  output logic [DATA_WIDTH-1:0]                 csr_ssr_start_o,
 
   // Interrupt inputs
-  input  logic                         irq_software_i,
-  input  logic                         irq_timer_i,
-  input  logic                         irq_external_i,
-  input  logic [15:0]                  irq_fast_i,
-  input  logic                         irq_nm_i,       // non-maskeable interrupt
-  output logic                         irq_pending_o,
+  input  logic                                  irq_software_i,
+  input  logic                                  irq_timer_i,
+  input  logic                                  irq_external_i,
+  input  logic [15:0]                           irq_fast_i,
+  input  logic                                  irq_nm_i,       // non-maskeable interrupt
+  output logic                                  irq_pending_o,
 
   // Debug Interface
-  input  logic                         debug_req_i,
-  output crash_dump_t                  crash_dump_o,
+  input  logic                                  debug_req_i,
+  output crash_dump_t                           crash_dump_o,
   // SEC_CM: EXCEPTION.CTRL_FLOW.LOCAL_ESC
   // SEC_CM: EXCEPTION.CTRL_FLOW.GLOBAL_ESC
 
@@ -97,38 +106,38 @@ module cve2_core import cve2_pkg::*; #(
   // Does not comply with the coding standards of _i/_o suffixes, but follows
   // the convention of RISC-V Formal Interface Specification.
 `ifdef RVFI
-  output logic                         rvfi_valid,
-  output logic [63:0]                  rvfi_order,
-  output logic [31:0]                  rvfi_insn,
-  output logic                         rvfi_trap,
-  output logic                         rvfi_halt,
-  output logic                         rvfi_intr,
-  output logic [ 1:0]                  rvfi_mode,
-  output logic [ 1:0]                  rvfi_ixl,
-  output logic [ 4:0]                  rvfi_rs1_addr,
-  output logic [ 4:0]                  rvfi_rs2_addr,
-  output logic [ 4:0]                  rvfi_rs3_addr,
-  output logic [31:0]                  rvfi_rs1_rdata,
-  output logic [31:0]                  rvfi_rs2_rdata,
-  output logic [31:0]                  rvfi_rs3_rdata,
-  output logic [ 4:0]                  rvfi_rd_addr,
-  output logic [31:0]                  rvfi_rd_wdata,
-  output logic [31:0]                  rvfi_pc_rdata,
-  output logic [31:0]                  rvfi_pc_wdata,
-  output logic [31:0]                  rvfi_mem_addr,
-  output logic [ 3:0]                  rvfi_mem_rmask,
-  output logic [ 3:0]                  rvfi_mem_wmask,
-  output logic [31:0]                  rvfi_mem_rdata,
-  output logic [31:0]                  rvfi_mem_wdata,
-  output logic [31:0]                  rvfi_ext_mip,
-  output logic                         rvfi_ext_nmi,
-  output logic                         rvfi_ext_debug_req,
-  output logic [63:0]                  rvfi_ext_mcycle,
+  output logic                                  rvfi_valid,
+  output logic [63:0]                           rvfi_order,
+  output logic [31:0]                           rvfi_insn,
+  output logic                                  rvfi_trap,
+  output logic                                  rvfi_halt,
+  output logic                                  rvfi_intr,
+  output logic [ 1:0]                           rvfi_mode,
+  output logic [ 1:0]                           rvfi_ixl,
+  output logic [ 4:0]                           rvfi_rs1_addr,
+  output logic [ 4:0]                           rvfi_rs2_addr,
+  output logic [ 4:0]                           rvfi_rs3_addr,
+  output logic [31:0]                           rvfi_rs1_rdata,
+  output logic [31:0]                           rvfi_rs2_rdata,
+  output logic [31:0]                           rvfi_rs3_rdata,
+  output logic [ 4:0]                           rvfi_rd_addr,
+  output logic [31:0]                           rvfi_rd_wdata,
+  output logic [31:0]                           rvfi_pc_rdata,
+  output logic [31:0]                           rvfi_pc_wdata,
+  output logic [31:0]                           rvfi_mem_addr,
+  output logic [ 3:0]                           rvfi_mem_rmask,
+  output logic [ 3:0]                           rvfi_mem_wmask,
+  output logic [31:0]                           rvfi_mem_rdata,
+  output logic [31:0]                           rvfi_mem_wdata,
+  output logic [31:0]                           rvfi_ext_mip,
+  output logic                                  rvfi_ext_nmi,
+  output logic                                  rvfi_ext_debug_req,
+  output logic [63:0]                           rvfi_ext_mcycle,
 `endif
 
   // CPU Control Signals
-  input  logic                         fetch_enable_i,
-  output logic                         core_busy_o
+  input  logic                                  fetch_enable_i,
+  output logic                                  core_busy_o
 );
 
   localparam int unsigned PMP_NUM_CHAN      = 3;
@@ -218,8 +227,6 @@ module cve2_core import cve2_pkg::*; #(
 
   logic        rf_we_lsu;
 
-
-
 //---------------------------------------------------------------------------------
   logic [4:0]  rf_waddr_a_id;
   logic [31:0] rf_wdata_a_id;
@@ -229,15 +236,10 @@ module cve2_core import cve2_pkg::*; #(
   logic        rf_we_b_id;
 //---------------------------------------------------------------------------------
 
-
-
-
   // ALU Control
   alu_op_e     alu_operator_ex;
   logic [31:0] alu_operand_a_ex;
   logic [31:0] alu_operand_b_ex;
-
-
 
 //---------------------------------------------------------------------------------
   logic [31:0] alu_operand_c_ex; //Not used so far.
@@ -451,7 +453,7 @@ module cve2_core import cve2_pkg::*; #(
     .RV32M          (RV32M),
     .RV32B          (RV32B),
     .N_HWLP         (N_HWLP),
-    .COPROC_OPCODE  (COPROC_OPCODE)
+    .XInterface     (XInterface)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -558,32 +560,24 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_store_err_i(lsu_store_err),
 
 
+    // Core-V Extension Interface (CV-X-IF)
+    // Issue Interface
+    .x_issue_valid_o(x_issue_valid_o),
+    .x_issue_ready_i(x_issue_ready_i),
+    .x_issue_req_o(x_issue_req_o),
+    .x_issue_resp_i(x_issue_resp_i),
 
-//---------------------------------------------------------------------------------
-    // CV-X-IF
-    // Issue interface
-    .xif_issue_valid_o             (xcs_cv_x_if_issue.issue_valid),
-    .xif_issue_req_instr_o         (xcs_cv_x_if_issue.issue_req.instr),
-    .xif_issue_ready_i             (xcs_cv_x_if_issue.issue_ready),
-    .xif_issue_resp_accept_i       (xcs_cv_x_if_issue.issue_resp.accept),
-    .xif_issue_resp_writeback_i    (xcs_cv_x_if_issue.issue_resp.writeback),
-    .xif_issue_resp_register_read_i(xcs_cv_x_if_issue.issue_resp.register_read),
-    // Register interface
-    .xif_register_rs1_o            (xcs_cv_x_if_register.register.rs[0]),
-    .xif_register_rs2_o            (xcs_cv_x_if_register.register.rs[1]),
-    .xif_register_rs3_o            (xcs_cv_x_if_register.register.rs[2]),
-    .xif_register_rs_valid_o       (xcs_cv_x_if_register.register.rs_valid),
-    // Commit interface
-    .xif_commit_valid_o            (xcs_cv_x_if_commit.commit_valid),
-    .xif_commit_kill_o             (xcs_cv_x_if_commit.commit.commit_kill),
-    // Result interface
-    .xif_result_ready_o            (xcs_cv_x_if_result.result_ready),
-    .xif_result_valid_i            (xcs_cv_x_if_result.result_valid),
-    .xif_result_we_i               (xcs_cv_x_if_result.result.we),
-    .xif_result_data_i             (xcs_cv_x_if_result.result.data),
-//---------------------------------------------------------------------------------
+    // Register Interface
+    .x_register_o(x_register_o),
 
+    // Commit Interface
+    .x_commit_valid_o(x_commit_valid_o),
+    .x_commit_o(x_commit_o),
 
+    // Result Interface
+    .x_result_valid_i(x_result_valid_i),
+    .x_result_ready_o(x_result_ready_o),
+    .x_result_i(x_result_i),
 
     // Interrupt Signals
     .csr_mstatus_mie_i(csr_mstatus_mie),
@@ -842,11 +836,11 @@ module cve2_core import cve2_pkg::*; #(
   // RF (Register File) //
   ////////////////////////
 
-  logic [31:0] csr_ssr_cfg; 
+  logic [31:0] csr_ssr_start; 
 
   cve2_register_file_ff_wrp #(
     .RV32E            (RV32E),
-    .DataWidth        (32),
+    .DataWidth        (DATA_WIDTH),
     .WordZeroVal      (32'h0),
     .SSR_ADDR         (SSR_ADDR)
   ) register_file_i (
@@ -880,7 +874,7 @@ module cve2_core import cve2_pkg::*; #(
 //---------------------------------------------------------------------------------
     // SSR FSM signals
     .instr_valid_i(instr_valid_id),
-    .csr_ssr_cfg_i(csr_ssr_cfg),
+    .csr_ssr_start_i(csr_ssr_start),
     .ssr_stall_rf_o(ssr_stall_rf),
 
     // SSR interfaces
@@ -937,8 +931,8 @@ module cve2_core import cve2_pkg::*; #(
 
 
 //---------------------------------------------------------------------------------
-    .csr_vec_mode_o (csr_vec_mode.packet),
-    .csr_ssr_cfg_o  (csr_ssr_cfg),
+    .csr_vec_mode_o (csr_vec_mode_o),
+    .csr_ssr_start_o  (csr_ssr_start),
 //---------------------------------------------------------------------------------
 
 
@@ -996,7 +990,7 @@ module cve2_core import cve2_pkg::*; #(
     .div_wait_i                 (perf_div_wait)
   );
 
-  always_comb csr_ssr_cfg_o = csr_ssr_cfg;
+  always_comb csr_ssr_start_o = csr_ssr_start;
 
   // These assertions are in top-level as instr_valid_id required as the enable term
   `ASSERT(IbexCsrOpValid, instr_valid_id |-> csr_op inside {

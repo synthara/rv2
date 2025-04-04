@@ -14,10 +14,10 @@
 `include "prim_assert.sv"
 
 module cve2_decoder #(
-  parameter bit               RV32E         = 0,
-  parameter cve2_pkg::rv32m_e RV32M         = cve2_pkg::RV32MFast,
-  parameter cve2_pkg::rv32b_e RV32B         = cve2_pkg::RV32BNone,
-  parameter bit [31:0]        COPROC_OPCODE = '0
+  parameter bit               RV32E      = 0,
+  parameter cve2_pkg::rv32m_e RV32M      = cve2_pkg::RV32MFast,
+  parameter cve2_pkg::rv32b_e RV32B      = cve2_pkg::RV32BNone,
+  parameter bit               XInterface = 1'b0
 ) (
   input  logic                  clk_i,
   input  logic                  rst_ni,
@@ -154,15 +154,9 @@ module cve2_decoder #(
 //---------------------------------------------------------------------------------
 
 
-
-//---------------------------------------------------------------------------------
-  // Coprocessor.
-  input  logic[2:0]            xif_issue_resp_register_read_i,
-  input  logic                 xif_issue_resp_writeback_i,
-  output logic                 coproc_instr_valid_o,
-//---------------------------------------------------------------------------------                                                      
-
-
+  // Core-V eXtension interface (CV-X-IF)
+  input  cve2_pkg::readregflags_t  x_issue_resp_register_read_i,
+  input  cve2_pkg::writeregflags_t x_issue_resp_writeback_i,                                                    
 
   // jump/branches
   output logic                 jump_in_dec_o,         // jump is being calculated in ALU
@@ -345,7 +339,6 @@ module cve2_decoder #(
 
 
 //---------------------------------------------------------------------------------
-    coproc_instr_valid_o    = 1'b0;
 
     lsu_addr_mux_sel_o      = 1'b0;
 
@@ -821,13 +814,6 @@ module cve2_decoder #(
                 data_type_o = 2'b00; // sw
               end
               default: begin
-                data_req_o         = 1'b0;  
-                rf_ren_a_o         = 1'b0;  
-                rf_ren_a_o         = 1'b0;
-                data_we_o          = 1'b0;  
-                lsu_addr_mux_sel_o = 1'b0;  
-                rf_we_b          = 1'b0; 
-                data_type_o        = '0;
                 illegal_insn       = 1'b1;
               end
             endcase
@@ -858,12 +844,6 @@ module cve2_decoder #(
                     3'b100 : data_type_o = 2'b10; // lbu
                     3'b101 : data_type_o = 2'b01; // lhu
                     default: begin
-                      data_req_o         = 1'b0; 
-                      rf_ren_a_o         = 1'b0; 
-                      rf_ren_b_o         = 1'b0;  
-                      lsu_addr_mux_sel_o = 1'b0; 
-                      rf_we_b          = 1'b0; 
-                      data_type_o        = '0;
                       illegal_insn       = 1'b1;
                     end
                   endcase
@@ -888,46 +868,13 @@ module cve2_decoder #(
                     2'b01  : data_type_o = 2'b01; // sh
                     2'b10  : data_type_o = 2'b00; // sw
                     default: begin
-                      data_req_o         = 1'b0;  
-                      rf_ren_a_o         = 1'b0; 
-                      rf_ren_c_o         = 1'b0; 
-                      data_we_o          = 1'b0;   
-                      lsu_addr_mux_sel_o = 1'b0;  
-                      rf_we_b          = 1'b0;  
-                      data_type_o        = '0;
                       illegal_insn       = 1'b1;
                     end
                   endcase
                 end
 
                 default: begin
-                    data_req_o              = 1'b0;  
-                    rf_ren_a_o              = 1'b0; 
-                    rf_ren_c_o              = 1'b0; 
-                    data_we_o               = 1'b0;   
-                    lsu_addr_mux_sel_o      = 1'b0;  
-                    rf_we_b               = 1'b0;  
-                    data_type_o             = 2'b00;
                     illegal_insn            = 1'b1;
-
-
-
-            //---------------------------------------------------------------------------------
-                    for(int i = 0; i < 32; i++) begin
-                      if(COPROC_OPCODE[i] && (instr[6:2] == i)) begin
-                        coproc_instr_valid_o = 1'b1;
-                        rf_ren_a_o         = xif_issue_resp_register_read_i[0];     
-                        rf_ren_b_o         = xif_issue_resp_register_read_i[1];      
-                        rf_ren_c_o         = xif_issue_resp_register_read_i[2];      
-                        rf_we_a            = xif_issue_resp_writeback_i;                          
-                        rf_wdata_sel_o     = RF_WD_COPROC;
-                        illegal_insn       = 1'b0;
-                      end
-                    end
-            //---------------------------------------------------------------------------------
-
-
-
               end
             endcase
           end
@@ -998,29 +945,12 @@ module cve2_decoder #(
                 hwlp_cnt_mux_sel_o   = 1'b1;
               end
               default: begin
-                hwlp_start_mux_sel_o = '0;
-                hwlp_end_mux_sel_o   = '0;
-                hwlp_cnt_mux_sel_o   = '0;
-                hwlp_we_o            = '0;
                 illegal_insn         = 1'b1;
               end
             endcase
           end // Plane B
 
           default: begin
-            data_req_o           = 1'b0;  
-            rf_ren_a_o           = 1'b0;
-            rf_ren_b_o           = 1'b0; 
-            rf_ren_c_o           = 1'b0; 
-            rf_we_a              = 1'b0;
-            rf_we_b            = 1'b0;  
-            data_we_o            = 1'b0;  
-            lsu_addr_mux_sel_o   = 1'b0;  
-            data_type_o          = '0;
-            hwlp_start_mux_sel_o = '0;
-            hwlp_end_mux_sel_o   = '0;
-            hwlp_cnt_mux_sel_o   = '0;
-            hwlp_we_o            = '0;
             illegal_insn         = 1'b1;
           end
         endcase
@@ -1028,35 +958,14 @@ module cve2_decoder #(
 
       default: begin
         illegal_insn = 1'b1;
-        data_req_o           = 1'b0;  
-        rf_ren_a_o           = 1'b0;
-        rf_ren_b_o           = 1'b0; 
-        rf_ren_c_o           = 1'b0; 
-        rf_we_a              = 1'b0;
-        rf_we_b            = 1'b0;  
-        data_we_o            = 1'b0;  
-        lsu_addr_mux_sel_o   = 1'b0;  
-        data_type_o          = '0;
-        hwlp_start_mux_sel_o = '0;
-        hwlp_end_mux_sel_o   = '0;
-        hwlp_cnt_mux_sel_o   = '0;
-        hwlp_we_o            = '0;
 
-
-
-//---------------------------------------------------------------------------------
-        for(int i = 0; i < 32; i++) begin
-          if(COPROC_OPCODE[i] && (instr[6:2] == i)) begin
-            coproc_instr_valid_o = 1'b1;
-            rf_ren_a_o         = xif_issue_resp_register_read_i[0];     
-            rf_ren_b_o         = xif_issue_resp_register_read_i[1];      
-            rf_ren_c_o         = xif_issue_resp_register_read_i[2];      
-            rf_we_a            = xif_issue_resp_writeback_i;                          
-            rf_wdata_sel_o     = RF_WD_COPROC;
-            illegal_insn       = 1'b0;
-          end
+        // Core-V Extension Interface (CV-X-IF)
+        if(XInterface) begin
+          rf_ren_a_o            = x_issue_resp_register_read_i[0];     
+          rf_ren_b_o            = x_issue_resp_register_read_i[1];           
+          rf_we_a               = x_issue_resp_writeback_i;                          
+          rf_wdata_sel_o        = RF_WD_COPROC;
         end
-//---------------------------------------------------------------------------------
       end
     endcase
 
@@ -1071,7 +980,6 @@ module cve2_decoder #(
     // insufficient privileges), or when accessing non-available registers in RV32E,
     // these cases are not handled here
     if (illegal_insn) begin
-      rf_we_a           = 1'b0;
       data_req_o      = 1'b0;
       data_we_o       = 1'b0;
       jump_in_dec_o   = 1'b0;

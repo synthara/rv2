@@ -19,49 +19,59 @@ module cve2_top import cve2_pkg::*; #(
   parameter rv32m_e      RV32M                = RV32MFast,
   parameter int unsigned DmHaltAddr           = 32'h1A110800,
   parameter int unsigned DmExceptionAddr      = 32'h1A110808,
+  parameter bit          XInterface           = 1'b0,
   parameter logic [NUM_SSR-1:0][4:0] SSR_ADDR = '{5'd28, 5'd29, 5'd30} // Example: reg 17 has stream semantics, NUM_SSR = 1
 ) (
   // Clock and Reset
-  input  logic                         clk_i,
-  input  logic                         rst_ni,
+  input  logic                                  clk_i,
+  input  logic                                  rst_ni,
 
-  input  logic                         test_en_i,     // enable all clock gates for testing
-  input  prim_ram_1p_pkg::ram_1p_cfg_t ram_cfg_i,
+  input  logic                                  test_en_i,     // enable all clock gates for testing
+  input  prim_ram_1p_pkg::ram_1p_cfg_t          ram_cfg_i,
 
-  input  logic [31:0]                  hart_id_i,
-  input  logic [31:0]                  boot_addr_i,
+  input  logic [31:0]                           hart_id_i,
+  input  logic [31:0]                           boot_addr_i,
 
   // Instruction memory interface
-  output logic                         instr_req_o,
-  input  logic                         instr_gnt_i,
-  input  logic                         instr_rvalid_i,
-  output logic [31:0]                  instr_addr_o,
-  input  logic [31:0]                  instr_rdata_i,
-  input  logic                         instr_err_i,
+  output logic                                  instr_req_o,
+  input  logic                                  instr_gnt_i,
+  input  logic                                  instr_rvalid_i,
+  output logic [31:0]                           instr_addr_o,
+  input  logic [31:0]                           instr_rdata_i,
+  input  logic                                  instr_err_i,
 
   // Data memory interface
-  output logic                         data_req_o,
-  input  logic                         data_gnt_i,
-  input  logic                         data_rvalid_i,
-  output logic                         data_we_o,
-  output logic [3:0]                   data_be_o,
-  output logic [31:0]                  data_addr_o,
-  output logic [31:0]                  data_wdata_o,
-  input  logic [31:0]                  data_rdata_i,
-  input  logic                         data_err_i,
+  output logic                                  data_req_o,
+  input  logic                                  data_gnt_i,
+  input  logic                                  data_rvalid_i,
+  output logic                                  data_we_o,
+  output logic [3:0]                            data_be_o,
+  output logic [31:0]                           data_addr_o,
+  output logic [31:0]                           data_wdata_o,
+  input  logic [31:0]                           data_rdata_i,
+  input  logic                                  data_err_i,
 
-//---------------------------------------------------------------------------------
-  // CV-X-IF.
-  // Issue interface
-  rvv_cv_x_if.cv_x_if_issue_mst        xcs_cv_x_if_issue,
-  // Register interface
-  rvv_cv_x_if.cv_x_if_register_mst     xcs_cv_x_if_register,
-  // Commit interface
-  rvv_cv_x_if.cv_x_if_commit_mst       xcs_cv_x_if_commit,
-  // Result interface
-  rvv_cv_x_if.cv_x_if_result_mst       xcs_cv_x_if_result,
+  // Core-V eXtension Interface
+  // Issue Interface
+  output logic                                  x_issue_valid_o,
+  input  logic                                  x_issue_ready_i,
+  output x_issue_req_t                          x_issue_req_o,
+  input  x_issue_resp_t                         x_issue_resp_i,
+
+  // Register Interface   
+  output x_register_t                           x_register_o,
+
+  // Commit Interface   
+  output logic                                  x_commit_valid_o,
+  output x_commit_t                             x_commit_o,
+
+  // Result Interface   
+  input  logic                                  x_result_valid_i,
+  output logic                                  x_result_ready_o,
+  input  x_result_t                             x_result_i,
+
   // CSR vec mode
-  status_if.mst                        csr_vec_mode,
+  output logic [DATA_WIDTH-1:0]                 csr_vec_mode_o,
 
   // SSR interfaces
   output logic [NUM_RF_SSR_PORT-1:0]            ssr_valid_o,
@@ -71,56 +81,56 @@ module cve2_top import cve2_pkg::*; #(
   output logic [31:0]                           ssr_wdata_o,
 
   // SSR config CSR register 
-  output logic [31:0] csr_ssr_cfg_o,
+  output logic [DATA_WIDTH-1:0]                 csr_ssr_start_o,
 //---------------------------------------------------------------------------------
 
   // Interrupt inputs
-  input  logic                         irq_software_i,
-  input  logic                         irq_timer_i,
-  input  logic                         irq_external_i,
-  input  logic [15:0]                  irq_fast_i,
-  input  logic                         irq_nm_i,       // non-maskeable interrupt
+  input  logic                                  irq_software_i,
+  input  logic                                  irq_timer_i,
+  input  logic                                  irq_external_i,
+  input  logic [15:0]                           irq_fast_i,
+  input  logic                                  irq_nm_i,       // non-maskeable interrupt
 
   // Debug Interface
-  input  logic                         debug_req_i,
-  output crash_dump_t                  crash_dump_o,
+  input  logic                                  debug_req_i,
+  output crash_dump_t                           crash_dump_o,
 
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follows
   // the convention of RISC-V Formal Interface Specification.
 `ifdef RVFI
-  output logic                         rvfi_valid,
-  output logic [63:0]                  rvfi_order,
-  output logic [31:0]                  rvfi_insn,
-  output logic                         rvfi_trap,
-  output logic                         rvfi_halt,
-  output logic                         rvfi_intr,
-  output logic [ 1:0]                  rvfi_mode,
-  output logic [ 1:0]                  rvfi_ixl,
-  output logic [ 4:0]                  rvfi_rs1_addr,
-  output logic [ 4:0]                  rvfi_rs2_addr,
-  output logic [ 4:0]                  rvfi_rs3_addr,
-  output logic [31:0]                  rvfi_rs1_rdata,
-  output logic [31:0]                  rvfi_rs2_rdata,
-  output logic [31:0]                  rvfi_rs3_rdata,
-  output logic [ 4:0]                  rvfi_rd_addr,
-  output logic [31:0]                  rvfi_rd_wdata,
-  output logic [31:0]                  rvfi_pc_rdata,
-  output logic [31:0]                  rvfi_pc_wdata,
-  output logic [31:0]                  rvfi_mem_addr,
-  output logic [ 3:0]                  rvfi_mem_rmask,
-  output logic [ 3:0]                  rvfi_mem_wmask,
-  output logic [31:0]                  rvfi_mem_rdata,
-  output logic [31:0]                  rvfi_mem_wdata,
-  output logic [31:0]                  rvfi_ext_mip,
-  output logic                         rvfi_ext_nmi,
-  output logic                         rvfi_ext_debug_req,
-  output logic [63:0]                  rvfi_ext_mcycle,
+  output logic                                  rvfi_valid,
+  output logic [63:0]                           rvfi_order,
+  output logic [31:0]                           rvfi_insn,
+  output logic                                  rvfi_trap,
+  output logic                                  rvfi_halt,
+  output logic                                  rvfi_intr,
+  output logic [ 1:0]                           rvfi_mode,
+  output logic [ 1:0]                           rvfi_ixl,
+  output logic [ 4:0]                           rvfi_rs1_addr,
+  output logic [ 4:0]                           rvfi_rs2_addr,
+  output logic [ 4:0]                           rvfi_rs3_addr,
+  output logic [31:0]                           rvfi_rs1_rdata,
+  output logic [31:0]                           rvfi_rs2_rdata,
+  output logic [31:0]                           rvfi_rs3_rdata,
+  output logic [ 4:0]                           rvfi_rd_addr,
+  output logic [31:0]                           rvfi_rd_wdata,
+  output logic [31:0]                           rvfi_pc_rdata,
+  output logic [31:0]                           rvfi_pc_wdata,
+  output logic [31:0]                           rvfi_mem_addr,
+  output logic [ 3:0]                           rvfi_mem_rmask,
+  output logic [ 3:0]                           rvfi_mem_wmask,
+  output logic [31:0]                           rvfi_mem_rdata,
+  output logic [31:0]                           rvfi_mem_wdata,
+  output logic [31:0]                           rvfi_ext_mip,
+  output logic                                  rvfi_ext_nmi,
+  output logic                                  rvfi_ext_debug_req,
+  output logic [63:0]                           rvfi_ext_mcycle,
 `endif
 
   // CPU Control Signals
-  input  logic                         fetch_enable_i,
-  output logic                         core_sleep_o
+  input  logic                                  fetch_enable_i,
+  output logic                                  core_sleep_o
 );
 
   // Scrambling Parameter
@@ -213,18 +223,26 @@ module cve2_top import cve2_pkg::*; #(
     .data_rdata_i,
     .data_err_i,
 
-//---------------------------------------------------------------------------------
-    // CV-X-IF.
-    // Issue interface.
-    .xcs_cv_x_if_issue,
-    // Register interface.
-    .xcs_cv_x_if_register,
-    // Commit interface.
-    .xcs_cv_x_if_commit,
-    // Result interface.
-    .xcs_cv_x_if_result,
-    // CSR vec mode.
-    .csr_vec_mode,
+    // Core-V Extension Interface (CV-X-IF)
+    // Issue Interface
+    .x_issue_valid_o,
+    .x_issue_ready_i,
+    .x_issue_req_o,
+    .x_issue_resp_i,
+
+    // Register Interface
+    .x_register_o,
+
+    // Commit Interface
+    .x_commit_valid_o,
+    .x_commit_o,
+
+    .csr_vec_mode_o,
+
+    // Result Interface
+    .x_result_valid_i,
+    .x_result_ready_o,
+    .x_result_i,
 
     // SSR interfaces
     .ssr_valid_o,
@@ -234,8 +252,7 @@ module cve2_top import cve2_pkg::*; #(
     .ssr_wdata_o,
 
     // SSR config CSR register 
-    .csr_ssr_cfg_o,
-//---------------------------------------------------------------------------------
+    .csr_ssr_start_o,
 
     .irq_software_i,
     .irq_timer_i,
