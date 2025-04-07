@@ -603,10 +603,10 @@ module cve2_id_stage #(
   // 1st register file write port data mux.
   always_comb begin : rf_wdata_id_mux
     unique case (rf_wdata_sel)
-      RF_WD_EX:     rf_wdata_a_id_o = result_ex_i;
-      RF_WD_CSR:    rf_wdata_a_id_o = csr_rdata_i;
-      RF_WD_COPROC: rf_wdata_a_id_o = x_result_i.data;
-      default:      rf_wdata_a_id_o = result_ex_i;
+      RF_WD_EX:     rf_wdata_a_id_o   = result_ex_i;
+      RF_WD_CSR:    rf_wdata_a_id_o   = csr_rdata_i;
+      RF_WD_COPROC: rf_wdata_a_id_o   = XInterface ? x_result_i.data : result_ex_i;
+      default:      rf_wdata_a_id_o   = result_ex_i;
     endcase
   end
 
@@ -1085,7 +1085,7 @@ module cve2_id_stage #(
             stall_multdiv   = multdiv_en_dec;
             stall_branch    = branch_in_dec;
             stall_jump      = jump_in_dec;
-            stall_coproc    = illegal_insn_dec;
+            stall_coproc    = XInterface & illegal_insn_dec;
           end
         end
 
