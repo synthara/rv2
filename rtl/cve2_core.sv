@@ -171,13 +171,7 @@ module cve2_core import cve2_pkg::*; #(
   logic        lsu_load_err;
   logic        lsu_store_err;
 
-
-
-//---------------------------------------------------------------------------------  
   logic        lsu_addr_mux_sel;
-//---------------------------------------------------------------------------------
-
-
 
   // LSU signals
   logic        lsu_addr_incr_req;
@@ -200,58 +194,44 @@ module cve2_core import cve2_pkg::*; #(
   logic        rf_ren_a;
   logic        rf_ren_b;
 
-//---------------------------------------------------------------------------------
-  //3rd register file read port signals.
+  //3rd register file read port signals
   logic [4:0]  rf_raddr_c;
   logic [31:0] rf_rdata_c;
   logic        rf_ren_c;
-//---------------------------------------------------------------------------------
+
   logic [4:0]  rf_waddr_a_wb;
   logic [31:0] rf_wdata_a_wb;
 
   //2nd register file write port signals.
   logic [4:0]  rf_waddr_b_wb;
   logic [31:0] rf_wdata_b_wb;
-//---------------------------------------------------------------------------------
 
   // Writeback register write data that can be used on the forwarding path (doesn't factor in memory
   // read data as this is too late for the forwarding path)
   logic [31:0] rf_wdata_lsu;
 
-//---------------------------------------------------------------------------------
   logic        rf_we_a_wb;
   //2nd register file write port enable signal.
   logic        lsu_we_b;
   logic        rf_we_b_wb;
-//---------------------------------------------------------------------------------
 
   logic        rf_we_lsu;
 
-//---------------------------------------------------------------------------------
   logic [4:0]  rf_waddr_a_id;
   logic [31:0] rf_wdata_a_id;
   logic        rf_we_a_id;
   logic [4:0]  rf_waddr_b_id;
   logic [31:0] rf_wdata_b_id;
   logic        rf_we_b_id;
-//---------------------------------------------------------------------------------
 
   // ALU Control
   alu_op_e     alu_operator_ex;
   logic [31:0] alu_operand_a_ex;
   logic [31:0] alu_operand_b_ex;
 
-//---------------------------------------------------------------------------------
   logic [31:0] alu_operand_c_ex; //Not used so far.
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
- logic [31:0] hwlp0_start, hwlp1_start ;
-//---------------------------------------------------------------------------------
-
-
+  logic [31:0] hwlp0_start, hwlp1_start ;
 
   logic [31:0] alu_adder_result_ex;    // Used to forward computed address to LSU
   logic [31:0] result_ex;
@@ -417,14 +397,8 @@ module cve2_core import cve2_pkg::*; #(
 
     .if_busy_o          (if_busy),
 
-
-
-//---------------------------------------------------------------------------------
     .hwlp0_start_i(hwlp0_start),
     .hwlp1_start_i(hwlp1_start)
-//---------------------------------------------------------------------------------
-
-
 
   );
 
@@ -439,14 +413,8 @@ module cve2_core import cve2_pkg::*; #(
   //////////////
   // ID stage //
   //////////////
-
-//---------------------------------------------------------------------------------
   localparam int unsigned N_HWLP = 2;
-  localparam int unsigned COPROC_OPCODE = (1 << 30) | (1 << 22) | (1 << 10); //TODO: change this value to let the core recognize all the coprocessor instructions
   logic [NUM_RF_SSR_PORT-1:0] ssr_stall_rf;
-//---------------------------------------------------------------------------------
-
-
 
   cve2_id_stage #(
     .RV32E          (RV32E),
@@ -497,12 +465,7 @@ module cve2_core import cve2_pkg::*; #(
     .alu_operand_a_ex_o(alu_operand_a_ex),
     .alu_operand_b_ex_o(alu_operand_b_ex),
 
-  
-//---------------------------------------------------------------------------------
     .alu_operand_c_ex_o(alu_operand_c_ex),
-//---------------------------------------------------------------------------------
-
-
 
     .imd_val_q_ex_o (imd_val_q_ex),
     .imd_val_d_ex_i (imd_val_d_ex),
@@ -538,20 +501,10 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_sign_ext_o(lsu_sign_ext),  // to load store unit
     .lsu_wdata_o   (lsu_wdata),  // to load store unit
 
-  
-  
-//---------------------------------------------------------------------------------
     .lsu_addr_mux_sel_o(lsu_addr_mux_sel),
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
     .hwlp0_start_o(hwlp0_start),
     .hwlp1_start_o(hwlp1_start),
-//---------------------------------------------------------------------------------
-
-
 
     .lsu_addr_incr_req_i(lsu_addr_incr_req),
     .lsu_addr_last_i    (lsu_addr_last),
@@ -605,21 +558,14 @@ module cve2_core import cve2_pkg::*; #(
     .rf_raddr_b_o      (rf_raddr_b),
     .rf_rdata_b_i      (rf_rdata_b),
 
-//---------------------------------------------------------------------------------
     .rf_raddr_c_o      (rf_raddr_c),
     .rf_rdata_c_i      (rf_rdata_c),
-//---------------------------------------------------------------------------------
 
     .rf_ren_a_o        (rf_ren_a),
     .rf_ren_b_o        (rf_ren_b),
 
-//---------------------------------------------------------------------------------
     .rf_ren_c_o        (rf_ren_c),
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
     .rf_waddr_a_id_o(rf_waddr_a_id),
     .rf_wdata_a_id_o(rf_wdata_a_id),
     .rf_we_a_id_o   (rf_we_a_id),
@@ -629,10 +575,6 @@ module cve2_core import cve2_pkg::*; #(
     .rf_we_b_id_o      (rf_we_b_id),
 
     .ssr_stall_rf_i    (ssr_stall_rf),
-//---------------------------------------------------------------------------------
-
- 
-
 
     .en_wb_o           (en_wb),
     .instr_perf_count_id_o (instr_perf_count_id),
@@ -718,17 +660,11 @@ module cve2_core import cve2_pkg::*; #(
     .lsu_wdata_i   (lsu_wdata),
     .lsu_sign_ext_i(lsu_sign_ext),
 
-
-
-//---------------------------------------------------------------------------------
     .rf_we_b_id_i(rf_we_b_id),
     .alu_operand_a_i   (alu_operand_a_ex),
     .lsu_addr_mux_sel_i(lsu_addr_mux_sel),
 
     .lsu_we_b_o(lsu_we_b),
-//---------------------------------------------------------------------------------
-
-
 
     .lsu_rdata_o      (rf_wdata_lsu),
     .lsu_rdata_valid_o(rf_we_lsu),
@@ -764,34 +700,22 @@ module cve2_core import cve2_pkg::*; #(
     .perf_instr_ret_wb_o                (perf_instr_ret_wb),
     .perf_instr_ret_compressed_wb_o     (perf_instr_ret_compressed_wb),
 
-
-
-//---------------------------------------------------------------------------------
     .rf_waddr_a_id_i(rf_waddr_a_id),
     .rf_wdata_a_id_i(rf_wdata_a_id),
     .rf_we_a_id_i(rf_we_a_id),
     .rf_waddr_b_id_i(rf_waddr_b_id),
     .rf_wdata_b_id_i(rf_wdata_b_id),
     .lsu_we_b_i   (lsu_we_b),
-//---------------------------------------------------------------------------------
-
-
 
     .rf_wdata_lsu_i(rf_wdata_lsu),
     .rf_we_lsu_i   (rf_we_lsu),
 
-
-
-//---------------------------------------------------------------------------------
     .rf_waddr_a_wb_o(rf_waddr_a_wb),
     .rf_wdata_a_wb_o(rf_wdata_a_wb),
     .rf_we_a_wb_o   (rf_we_a_wb),
     .rf_waddr_b_wb_o(rf_waddr_b_wb),
     .rf_wdata_b_wb_o(rf_wdata_b_wb),
     .rf_we_b_wb_o   (rf_we_b_wb),
-//---------------------------------------------------------------------------------
-
-
 
     .lsu_resp_valid_i(lsu_resp_valid),
     .lsu_resp_err_i  (lsu_resp_err)
@@ -853,37 +777,25 @@ module cve2_core import cve2_pkg::*; #(
     .rdata_a_o(rf_rdata_a),
     .raddr_b_i(rf_raddr_b),
     .rdata_b_o(rf_rdata_b),
-
-//---------------------------------------------------------------------------------
-    //3rd register file read port signals.
     .raddr_c_i(rf_raddr_c),
     .rdata_c_o(rf_rdata_c),
-//---------------------------------------------------------------------------------
 
-    //1nd register file write port signals.
     .we_a_i   (rf_we_a_wb),
     .waddr_a_i(rf_waddr_a_wb),
     .wdata_a_i(rf_wdata_a_wb),
-//---------------------------------------------------------------------------------
-    //2nd register file write port signals.
     .we_b_i   (rf_we_b_wb),
     .waddr_b_i(rf_waddr_b_wb),
     .wdata_b_i(rf_wdata_b_wb),
-//---------------------------------------------------------------------------------
 
-//---------------------------------------------------------------------------------
-    // SSR FSM signals
     .instr_valid_i(instr_valid_id),
     .csr_ssr_start_i(csr_ssr_start),
     .ssr_stall_rf_o(ssr_stall_rf),
 
-    // SSR interfaces
     .ssr_valid_o(ssr_valid_o),
     .ssr_ready_i(ssr_ready_i),
     .ssr_addr_o(ssr_addr_o),
     .ssr_rdata_i(ssr_rdata_i),
     .ssr_wdata_o(ssr_wdata_o)
-//---------------------------------------------------------------------------------
 
   );
   
@@ -928,14 +840,8 @@ module cve2_core import cve2_pkg::*; #(
     .csr_op_en_i (csr_op_en),
     .csr_rdata_o (csr_rdata),
 
-
-
-//---------------------------------------------------------------------------------
     .csr_vec_mode_o (csr_vec_mode_o),
     .csr_ssr_start_o  (csr_ssr_start),
-//---------------------------------------------------------------------------------
-
-
 
     // Interrupt related control signals
     .irq_software_i   (irq_software_i),

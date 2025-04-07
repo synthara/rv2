@@ -24,10 +24,7 @@ module cve2_wb #(
   output logic                     perf_instr_ret_wb_o,
   output logic                     perf_instr_ret_compressed_wb_o,
 
-
-
-//---------------------------------------------------------------------------------
-// Register file write ports signals coming from ID.
+// Register file write ports signals coming from ID
   input  logic [4:0]               rf_waddr_a_id_i,
   input  logic [31:0]              rf_wdata_a_id_i,
   input  logic                     rf_we_a_id_i,
@@ -35,16 +32,10 @@ module cve2_wb #(
   input  logic [4:0]               rf_waddr_b_id_i,
   input  logic [31:0]              rf_wdata_b_id_i,
   input  logic                     lsu_we_b_i,
-//---------------------------------------------------------------------------------
-
-
 
   input  logic [31:0]              rf_wdata_lsu_i,
   input  logic                     rf_we_lsu_i,
 
-
-
-//---------------------------------------------------------------------------------
   // 1st register file write port outputs.
   output logic [4:0]               rf_waddr_a_wb_o,
   output logic [31:0]              rf_wdata_a_wb_o,
@@ -53,9 +44,6 @@ module cve2_wb #(
   output logic [4:0]               rf_waddr_b_wb_o,
   output logic [31:0]              rf_wdata_b_wb_o,
   output logic                     rf_we_b_wb_o,
-//---------------------------------------------------------------------------------
-
-
 
   input logic                      lsu_resp_valid_i,
   input logic                      lsu_resp_err_i
@@ -87,13 +75,9 @@ module cve2_wb #(
                          ({32{rf_wdata_wb_mux_we[1]}} & rf_wdata_wb_mux[1]);
   assign rf_we_a_wb_o    = |rf_wdata_wb_mux_we;
 
-
-//---------------------------------------------------------------------------------
   assign rf_waddr_b_wb_o = rf_waddr_b_id_i;
   assign rf_wdata_b_wb_o = rf_wdata_b_id_i;
   assign rf_we_b_wb_o    = lsu_we_b_i;
-//---------------------------------------------------------------------------------
-
 
   `ASSERT(RFWriteFromOneSourceOnly, $onehot0(rf_wdata_wb_mux_we))
 endmodule

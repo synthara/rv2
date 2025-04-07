@@ -32,7 +32,6 @@ module cve2_register_file_ff_wrp import cve2_pkg::*; #(
   input  logic [4:0]           waddr_b_i,
   input  logic [DataWidth-1:0] wdata_b_i,
 
-//---------------------------------------------------------------------------------
   // SSR FSM signals
   input  logic                       instr_valid_i,
   input  logic [DataWidth-1:0]       csr_ssr_start_i,
@@ -44,7 +43,6 @@ module cve2_register_file_ff_wrp import cve2_pkg::*; #(
   output logic [NUM_RF_SSR_PORT-1:0][4:0]       ssr_addr_o,
   input  logic [NUM_RF_SSR_READ_PORT-1:0][31:0] ssr_rdata_i,
   output logic [DataWidth-1:0]                  ssr_wdata_o
-//---------------------------------------------------------------------------------
 
 );
 

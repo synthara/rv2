@@ -74,15 +74,9 @@ module cve2_if_stage import cve2_pkg::*; #(
   // misc signals
   output logic                        if_busy_o,                 // IF stage is busy fetching instr
 
-
-
-//---------------------------------------------------------------------------------
-  // Hardware Loop start address.
+  // Hardware Loop start address
   input [31:0]                      hwlp0_start_i,
   input [31:0]                      hwlp1_start_i
-//---------------------------------------------------------------------------------
-
-
 
 );
 
@@ -143,9 +137,6 @@ module cve2_if_stage import cve2_pkg::*; #(
   assign pc_mux_internal =
     pc_mux_i;
 
-
-
-//---------------------------------------------------------------------------------
   // fetch address selection mux
   always_comb begin : fetch_addr_mux
     unique case (pc_mux_internal)
@@ -159,9 +150,6 @@ module cve2_if_stage import cve2_pkg::*; #(
       default:  fetch_addr_n = { boot_addr_i[31:8], 8'h00 };
     endcase
   end
-//---------------------------------------------------------------------------------
-
-
 
   // tell CS register file to initialize mtvec on boot
   assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;

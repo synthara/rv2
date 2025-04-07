@@ -39,16 +39,11 @@ module cve2_load_store_unit
   input  logic         lsu_sign_ext_i,       // sign extension                   -> from ID/EX
 
 
-
-//---------------------------------------------------------------------------------
   input logic          rf_we_b_id_i,
   input logic [31:0]   alu_operand_a_i,
   input logic          lsu_addr_mux_sel_i,
 
   output logic         lsu_we_b_o,
-//---------------------------------------------------------------------------------
-
-
 
   output logic [31:0]  lsu_rdata_o,          // requested data                   -> to ID/EX
   output logic         lsu_rdata_valid_o,
@@ -112,13 +107,7 @@ module cve2_load_store_unit
 
   ls_fsm_e ls_fsm_cs, ls_fsm_ns;
 
-
-
-//---------------------------------------------------------------------------------
   assign data_addr   = lsu_addr_mux_sel_i ? alu_operand_a_i : adder_result_ex_i;
-//---------------------------------------------------------------------------------
-
-
 
   assign data_offset = data_addr[1:0];
 
@@ -497,9 +486,6 @@ module cve2_load_store_unit
   // output data address must be word aligned
   assign data_addr_w_aligned = {data_addr[31:2], 2'b00};
 
-
-
-//---------------------------------------------------------------------------------
   logic we_b_d, we_b_q;
   assign we_b_d = rf_we_b_id_i;
 
@@ -514,9 +500,6 @@ module cve2_load_store_unit
   assign lsu_we_b_o = we_b_q && lsu_resp_valid_o; 
 
   assign data_addr_o = data_addr_w_aligned;
-//---------------------------------------------------------------------------------
-
-
 
   assign data_wdata_o  = data_wdata;
   assign data_we_o     = lsu_we_i;

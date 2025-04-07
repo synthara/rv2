@@ -68,14 +68,7 @@ module cve2_id_stage #(
   output cve2_pkg::alu_op_e         alu_operator_ex_o,
   output logic [31:0]               alu_operand_a_ex_o,
   output logic [31:0]               alu_operand_b_ex_o,
-
-
-
-//---------------------------------------------------------------------------------
   output logic [31:0]               alu_operand_c_ex_o,
-//---------------------------------------------------------------------------------
-
-
 
   // Multicycle Operation Stage Register
   input  logic [1:0]                imd_val_we_ex_i,
@@ -113,22 +106,13 @@ module cve2_id_stage #(
   output logic                      lsu_sign_ext_o,
   output logic [31:0]               lsu_wdata_o,
 
-
-
-//---------------------------------------------------------------------------------
-  //Signals needed for Post-Increment Load&Store operations.
+  // Signal required for Post-Increment Load & Store operations: when set,  
+  // memory is accessed using the content of rs1
   output logic                      lsu_addr_mux_sel_o,
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
-  // Signal needed for Hardware Loop operations.
-  output logic[31:0] hwlp0_start_o, // To IF stage.
+  // Signal needed for Hardware Loop operations
+  output logic[31:0] hwlp0_start_o, // To IF stage
   output logic[31:0] hwlp1_start_o,
-//---------------------------------------------------------------------------------
-
-
 
   input  logic                      lsu_addr_incr_req_i,
   input  logic [31:0]               lsu_addr_last_i,
@@ -181,43 +165,28 @@ module cve2_id_stage #(
   input  logic [31:0]               rf_rdata_a_i,
   output logic [4:0]                rf_raddr_b_o,
   input  logic [31:0]               rf_rdata_b_i,
-
-
-
-//---------------------------------------------------------------------------------
   output logic [4:0]                rf_raddr_c_o,
   input  logic [31:0]               rf_rdata_c_i,
-//---------------------------------------------------------------------------------
-
-
 
   output logic                      rf_ren_a_o,
   output logic                      rf_ren_b_o,
-
-
-
-//---------------------------------------------------------------------------------
   output logic                      rf_ren_c_o,
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
   // Register file write (via writeback)
-  //1st port.
+  // 1st port
   output logic [4:0]                rf_waddr_a_id_o,
   output logic [31:0]               rf_wdata_a_id_o,
   output logic                      rf_we_a_id_o,
-  //2st port.
+  // 2st port
   output logic [4:0]                rf_waddr_b_id_o,
   output logic [31:0]               rf_wdata_b_id_o,
   output logic                      rf_we_b_id_o,
 
-  // SSR signal
+  // This signal is a vector, with each entry corresponding to a register file port  
+  // for which request routing to the outside is possible.  
+  // An entry is set high when the SSR is enabled, a request is routed for that port,  
+  // and a handshake has not yet occurred (i.e., the data is not yet available)
   input logic [NUM_RF_SSR_PORT-1:0] ssr_stall_rf_i,
-//---------------------------------------------------------------------------------
-
-
 
   output  logic                     en_wb_o,
   output  logic                     instr_perf_count_id_o,
@@ -279,14 +248,7 @@ module cve2_id_stage #(
   logic [31:0] imm_u_type;
   logic [31:0] imm_j_type;
   logic [31:0] zimm_rs1_type;
-
-
-
-//---------------------------------------------------------------------------------
   logic [31:0] imm_iz_type;
-//---------------------------------------------------------------------------------
-
-
 
   logic [31:0] imm_a;       // contains the immediate for operand b
   logic [31:0] imm_b;       // contains the immediate for operand b
@@ -294,82 +256,30 @@ module cve2_id_stage #(
   // Register file interface
 
   rf_wd_sel_e  rf_wdata_sel;
-  logic        rf_we_a_dec, rf_we_a_raw;
+  logic        rf_we_a_dec, rf_we_b_dec, rf_we_a_raw;
 
+  logic        rf_ren_a, rf_ren_b, rf_ren_c;
 
-
-//---------------------------------------------------------------------------------
-  logic        rf_we_b_dec;
-//---------------------------------------------------------------------------------
-
-
-
-  logic        rf_ren_a, rf_ren_b;
-
-
-
-//---------------------------------------------------------------------------------
-  logic        rf_ren_c;
-//---------------------------------------------------------------------------------
-
-
-
-  logic        rf_ren_a_dec, rf_ren_b_dec;
-
-
-
-//---------------------------------------------------------------------------------
-  logic        rf_ren_c_dec;
-//---------------------------------------------------------------------------------
-
-
+  logic        rf_ren_a_dec, rf_ren_b_dec, rf_ren_c_dec;
 
   // Read enables should only be asserted for valid and legal instructions
   assign rf_ren_a = instr_valid_i & ~instr_fetch_err_i & ~illegal_insn_o & rf_ren_a_dec;
   assign rf_ren_b = instr_valid_i & ~instr_fetch_err_i & ~illegal_insn_o & rf_ren_b_dec;
-
-
-
-//---------------------------------------------------------------------------------
   assign rf_ren_c = instr_valid_i & ~instr_fetch_err_i & ~illegal_insn_o & rf_ren_c_dec;
-//---------------------------------------------------------------------------------
-
-
 
   assign rf_ren_a_o = rf_ren_a;
   assign rf_ren_b_o = rf_ren_b;
-
-
-
-//---------------------------------------------------------------------------------
   assign rf_ren_c_o = rf_ren_c;
-//---------------------------------------------------------------------------------
-
-
 
   logic [31:0] rf_rdata_a_fwd;
   logic [31:0] rf_rdata_b_fwd;
-
-
-
-//---------------------------------------------------------------------------------
   logic [31:0] rf_rdata_c_fwd;
-//---------------------------------------------------------------------------------
-
-
 
   // ALU Control
   alu_op_e     alu_operator;
   op_a_sel_e   alu_op_a_mux_sel, alu_op_a_mux_sel_dec;
   op_b_sel_e   alu_op_b_mux_sel, alu_op_b_mux_sel_dec;
-
-
-
-//---------------------------------------------------------------------------------
   op_c_sel_e   alu_op_c_mux_sel;
-//---------------------------------------------------------------------------------
-
-
 
   logic        alu_multicycle_dec;
   logic        stall_alu;
@@ -398,10 +308,7 @@ module cve2_id_stage #(
 
   logic [31:0] alu_operand_a;
   logic [31:0] alu_operand_b;
-
-//---------------------------------------------------------------------------------
   logic [31:0] alu_operand_c;
-//---------------------------------------------------------------------------------
 
   /////////////
   // LSU Mux //
@@ -456,12 +363,10 @@ module cve2_id_stage #(
       IMM_B_INCR_ADDR})
 
 
-
-//---------------------------------------------------------------------------------
-  // Operand C MUX: needed for Register-Register Stores with Post-Increment and Register-Register Stores.
+  // Operand C MUX: needed for Register-Register Stores with Post-Increment and Register-Register Stores
   // The adder needs rs1 and rs3 as inputs to calculate the incremented address (Register-Register Stores with Post-Increment: rs1+=rs3) 
   // or to calculate the actual adress (Register-Register Stores: Mem(rs1+rs3)). Therefore, rs3 is routed by means of the MUX for Operand B 
-  // to the second input of the adder whereas the data to be stored pass through ALU Operand C.
+  // to the second input of the adder whereas the data to be stored pass through ALU Operand C
 
   always_comb begin : alu_operand_b_mux
     unique case (alu_op_b_mux_sel)
@@ -477,15 +382,9 @@ module cve2_id_stage #(
       OP_C_REG_B:  alu_operand_c = rf_rdata_b_fwd;
     endcase
   end
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
-  // Hardware Loop.
-
-  // Intermediate signals,
-  // hwloop_regs input signals.
+  // Hardware Loop
+  // hwloop_regs input signals
   logic [1:0]               hwlp_start_mux_sel;
   logic [31:0]              hwlp_start_d;
   logic [1:0]               hwlp_end_mux_sel;
@@ -495,7 +394,7 @@ module cve2_id_stage #(
   logic [2:0]               hwlp_we;
   logic                     hwlp_regid;
 
-  // hwloops_regs output signals.
+  // hwloops_regs output signals
   logic [N_HWLP-1:0][31:0]  hwlp_start_q; // To IF stage.
   logic [N_HWLP-1:0][31:0]  hwlp_end_q;   // To controller.
   logic [N_HWLP-1:0][31:0]  hwlp_cnt_q;   // 
@@ -506,7 +405,7 @@ module cve2_id_stage #(
   // Counter enable (from controller to hwloop_regs)
   logic[N_HWLP-1:0]         hwlp_dec_cnt; 
 
-  //Start address.
+  // Start address
   always_comb begin
     case (hwlp_start_mux_sel)
       2'b00:   hwlp_start_d = hwlp_end_d;  
@@ -516,7 +415,7 @@ module cve2_id_stage #(
     endcase
   end
 
-  //End address.
+  // End address
   always_comb begin
     case (hwlp_end_mux_sel)
       2'b00:   hwlp_end_d = pc_id_i + {imm_iz_type[29:0], 2'b0};
@@ -526,7 +425,7 @@ module cve2_id_stage #(
     endcase
   end
 
-  //Counter value.
+  // Counter value
   always_comb begin : hwlp_cnt_mux
     case (hwlp_cnt_mux_sel)
       1'b0: hwlp_cnt_d = imm_iz_type;
@@ -563,10 +462,6 @@ module cve2_id_stage #(
     .hwlp_counter_o   (hwlp_cnt_q)
   );
 
-//---------------------------------------------------------------------------------
-
-
-
   /////////////////////////////////////////
   // Multicycle Operation Stage Register //
   /////////////////////////////////////////
@@ -589,17 +484,9 @@ module cve2_id_stage #(
 
   // Suppress register write if there is an illegal CSR access or instruction is not executing
   assign rf_we_a_id_o = rf_we_a_raw & instr_executing & ~illegal_csr_insn_i;
-
-
-
-//---------------------------------------------------------------------------------
-  //The 2nd register file write port is not involved in CSR operations.
+  //The 2nd register file write port is not involved in CSR operations
   assign rf_we_b_id_o =  rf_we_b_dec & instr_executing;
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
   // 1st register file write port data mux.
   always_comb begin : rf_wdata_id_mux
     unique case (rf_wdata_sel)
@@ -612,7 +499,6 @@ module cve2_id_stage #(
 
   // 2nd register file write port data.
   assign rf_wdata_b_id_o = result_ex_i;
-//---------------------------------------------------------------------------------
 
   /////////////
   // Decoder //
@@ -656,56 +542,26 @@ module cve2_id_stage #(
     // register file
     .rf_wdata_sel_o(rf_wdata_sel),
     .rf_we_a_o     (rf_we_a_dec),
-
-
-
-//---------------------------------------------------------------------------------
     .rf_we_b_o(rf_we_b_dec),
-//---------------------------------------------------------------------------------
-
-
 
     .rf_raddr_a_o(rf_raddr_a_o),
     .rf_raddr_b_o(rf_raddr_b_o),
 
-
-
-//---------------------------------------------------------------------------------
     .rf_raddr_c_o(rf_raddr_c_o),
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
     .rf_waddr_a_o(rf_waddr_a_id_o),
     .rf_waddr_b_o(rf_waddr_b_id_o),
-//---------------------------------------------------------------------------------
-
-
 
     .rf_ren_a_o  (rf_ren_a_dec),
     .rf_ren_b_o  (rf_ren_b_dec),
 
-
-
-//---------------------------------------------------------------------------------
     .rf_ren_c_o  (rf_ren_c_dec),
-//---------------------------------------------------------------------------------
-
-
 
     // ALU
     .alu_operator_o    (alu_operator),
     .alu_op_a_mux_sel_o(alu_op_a_mux_sel_dec),
-
-
-
-//---------------------------------------------------------------------------------
     .alu_op_b_mux_sel_o(alu_op_b_mux_sel_dec),
     .alu_op_c_mux_sel_o(alu_op_c_mux_sel),    
-//---------------------------------------------------------------------------------
-
-
 
     .alu_multicycle_o  (alu_multicycle_dec),
 
@@ -727,31 +583,18 @@ module cve2_id_stage #(
     .data_type_o          (lsu_type),
     .data_sign_extension_o(lsu_sign_ext),
 
-
-
-//---------------------------------------------------------------------------------
+    // HWLP
     .hwlp_start_mux_sel_o(hwlp_start_mux_sel), 
     .hwlp_end_mux_sel_o  (hwlp_end_mux_sel),   
     .hwlp_cnt_mux_sel_o  (hwlp_cnt_mux_sel),   
     .hwlp_we_o           (hwlp_we),            
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
+    // Post-Incremtent Load & Store
     .lsu_addr_mux_sel_o(lsu_addr_mux_sel_o), 
-//---------------------------------------------------------------------------------
 
-
-
-//---------------------------------------------------------------------------------
+    // Core-V eXtension interface (CV-X-IF)
     .x_issue_resp_register_read_i(x_issue_resp_i.register_read),
     .x_issue_resp_writeback_i(x_issue_resp_i.writeback),
-//---------------------------------------------------------------------------------
-
-
-
-
 
     // jump/branches
     .jump_in_dec_o  (jump_in_dec),
@@ -836,6 +679,7 @@ module cve2_id_stage #(
     .lsu_addr_last_i(lsu_addr_last_i),
     .load_err_i     (lsu_load_err_i),
     .store_err_i    (lsu_store_err_i),
+
     // jump/branch control
     .branch_set_i     (branch_set),
     .jump_set_i       (jump_set),
@@ -874,15 +718,10 @@ module cve2_id_stage #(
     .perf_jump_o   (perf_jump_o),
     .perf_tbranch_o(perf_tbranch_o),
 
-
-
-  //---------------------------------------------------------------------------------
+    // HWLP
     .hwlp_end_i(hwlp_end_q),
     .hwlp_cnt_i(hwlp_cnt_q),
     .hwlp_dec_cnt_o(hwlp_dec_cnt)
-  //---------------------------------------------------------------------------------
-
-
   
   );
 
@@ -906,14 +745,7 @@ module cve2_id_stage #(
   assign alu_operator_ex_o           = alu_operator;
   assign alu_operand_a_ex_o          = alu_operand_a;
   assign alu_operand_b_ex_o          = alu_operand_b;
-
-
-
-//---------------------------------------------------------------------------------
   assign alu_operand_c_ex_o          = alu_operand_c;
-//---------------------------------------------------------------------------------
-
-
 
   assign mult_en_ex_o                = mult_en_id;
   assign div_en_ex_o                 = div_en_id;
@@ -1153,10 +985,8 @@ module cve2_id_stage #(
   // Stall ID/EX stage for reason that relates to instruction in ID/EX, update assertion below if
   // modifying this.
 
-//---------------------------------------------------------------------------------
   assign stall_id = stall_mem | stall_multdiv | stall_jump | stall_branch |
                       stall_alu | stall_coproc | |ssr_stall_rf_i;
-//---------------------------------------------------------------------------------
 
   // Generally illegal instructions have no reason to stall, however they must still stall waiting
   // for outstanding memory requests so exceptions related to them take priority over the illegal
@@ -1192,10 +1022,7 @@ module cve2_id_stage #(
     // register file
     assign rf_rdata_a_fwd = rf_rdata_a_i;
     assign rf_rdata_b_fwd = rf_rdata_b_i;
-
-//---------------------------------------------------------------------------------
     assign rf_rdata_c_fwd  = rf_rdata_c_i;
-//---------------------------------------------------------------------------------
 
     // Unused Writeback stage only IO & wiring
     // Assign inputs and internal wiring to unused signals to satisfy lint checks

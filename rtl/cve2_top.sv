@@ -82,7 +82,6 @@ module cve2_top import cve2_pkg::*; #(
 
   // SSR config CSR register 
   output logic [DATA_WIDTH-1:0]                 csr_ssr_start_o,
-//---------------------------------------------------------------------------------
 
   // Interrupt inputs
   input  logic                                  irq_software_i,

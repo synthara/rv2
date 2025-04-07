@@ -29,22 +29,18 @@ module cve2_register_file_ff #(
   input  logic [4:0]           raddr_b_i,
   output logic [DataWidth-1:0] rdata_b_o,
 
-//---------------------------------------------------------------------------------
   input  logic [4:0]           raddr_c_i,
   output logic [DataWidth-1:0] rdata_c_o,
-//---------------------------------------------------------------------------------
 
   // Write port W1
   input  logic [4:0]           waddr_a_i,
   input  logic [DataWidth-1:0] wdata_a_i,
   input  logic                 we_a_i,
 
-//---------------------------------------------------------------------------------
   // Write port W2
   input  logic [4:0]           waddr_b_i,
   input  logic [DataWidth-1:0] wdata_b_i,
   input  logic                 we_b_i
-//---------------------------------------------------------------------------------
 
 );
 
@@ -54,9 +50,8 @@ module cve2_register_file_ff #(
   logic [NUM_WORDS-1:0][DataWidth-1:0] rf_reg;
   logic [NUM_WORDS-1:1][DataWidth-1:0] rf_reg_q;
   logic [NUM_WORDS-1:1]                we_a_dec;
-
-//---------------------------------------------------------------------------------
   logic [NUM_WORDS-1:1]                we_b_dec;
+
   always_comb begin : we_decoder
     for (int unsigned i = 1; i < NUM_WORDS; i++) begin
       we_a_dec[i] = (waddr_a_i == 5'(i)) ? we_a_i : 1'b0;
@@ -70,6 +65,8 @@ module cve2_register_file_ff #(
       if (!rst_ni) begin
         rf_reg_q[i] <= WordZeroVal;
       end else begin
+        // When same register is used as address and destination (rD == rs1) for post-incremented loads,
+        // loaded data has highest priority over incremented address when writing to this same register.
         if(we_a_dec[i] && we_b_dec[i]) begin
           rf_reg_q[i] <= wdata_a_i;
         end
@@ -77,7 +74,6 @@ module cve2_register_file_ff #(
           if (we_a_dec[i]) begin
             rf_reg_q[i] <= wdata_a_i;
           end
-
           if (we_b_dec[i]) begin
             rf_reg_q[i] <= wdata_b_i;
           end 
@@ -85,7 +81,6 @@ module cve2_register_file_ff #(
       end
     end
   end
-//---------------------------------------------------------------------------------
 
   // R0 is nil
   assign rf_reg[0] = WordZeroVal;
@@ -94,10 +89,7 @@ module cve2_register_file_ff #(
 
   assign rdata_a_o = rf_reg[raddr_a_i];
   assign rdata_b_o = rf_reg[raddr_b_i];
-
-//---------------------------------------------------------------------------------
   assign rdata_c_o = rf_reg[raddr_c_i];
-//---------------------------------------------------------------------------------
 
   // Signal not used in FF register file
   logic unused_test_en;

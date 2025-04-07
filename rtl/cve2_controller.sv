@@ -95,21 +95,14 @@ module cve2_controller #(
 
   // performance monitors
   output logic                  perf_jump_o,             // we are executing a jump
-                                                         // instruction (j, jr, jal, jalr)
-  output logic                  perf_tbranch_o,           // we are executing a taken branch
-                                                         // instruction
-
-
-
-  //---------------------------------------------------------------------------------
-  // Hardware Loop signals.
+                                                        // instruction (j, jr, jal, jalr)
+  output logic                  perf_tbranch_o,          // we are executing a taken branch
+                                                        // instruction
+  // HWLP
   input logic  [N_HWLP-1:0][31:0] hwlp_end_i,
   input logic  [N_HWLP-1:0][31:0] hwlp_cnt_i,
   output logic [N_HWLP-1:0]       hwlp_dec_cnt_o
-  //---------------------------------------------------------------------------------
-
-
-
+  
 );
   import cve2_pkg::*;
 
