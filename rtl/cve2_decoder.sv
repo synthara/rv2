@@ -875,13 +875,6 @@ module cve2_decoder #(
 
                 default: begin
                     illegal_insn            = 1'b1;
-                    // Core-V Extension Interface (CV-X-IF)
-                    if(XInterface) begin
-                      rf_ren_a_o            = x_issue_resp_register_read_i[0];     
-                      rf_ren_b_o            = x_issue_resp_register_read_i[1];           
-                      rf_we_a               = x_issue_resp_writeback_i;                          
-                      rf_wdata_sel_o        = RF_WD_COPROC;
-                    end
               end
             endcase
           end
@@ -965,14 +958,6 @@ module cve2_decoder #(
 
       default: begin
         illegal_insn = 1'b1;
-
-        // Core-V Extension Interface (CV-X-IF)
-        if(XInterface) begin
-          rf_ren_a_o            = x_issue_resp_register_read_i[0];     
-          rf_ren_b_o            = x_issue_resp_register_read_i[1];           
-          rf_we_a               = x_issue_resp_writeback_i;                          
-          rf_wdata_sel_o        = RF_WD_COPROC;
-        end
       end
     endcase
 
@@ -986,13 +971,24 @@ module cve2_decoder #(
     // NOTE: instructions can also be detected to be illegal inside the CSRs (upon accesses with
     // insufficient privileges), or when accessing non-available registers in RV32E,
     // these cases are not handled here
+
     if (illegal_insn) begin
-      data_req_o      = 1'b0;
-      data_we_o       = 1'b0;
-      jump_in_dec_o   = 1'b0;
-      jump_set_o      = 1'b0;
-      branch_in_dec_o = 1'b0;
-      csr_access_o    = 1'b0;
+      // Core-V Extension Interface (CV-X-IF)
+      if(XInterface) begin
+        rf_ren_a_o            = x_issue_resp_register_read_i[0];     
+        rf_ren_b_o            = x_issue_resp_register_read_i[1];           
+        rf_we_a               = x_issue_resp_writeback_i;                          
+        rf_wdata_sel_o        = RF_WD_COPROC;
+      end
+      else begin
+        rf_we_a         = 1'b0;
+        data_req_o      = 1'b0;
+        data_we_o       = 1'b0;
+        jump_in_dec_o   = 1'b0;
+        jump_set_o      = 1'b0;
+        branch_in_dec_o = 1'b0;
+        csr_access_o    = 1'b0;
+      end
     end
   end
 
