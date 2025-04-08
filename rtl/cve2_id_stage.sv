@@ -236,10 +236,6 @@ module cve2_id_stage #(
   logic        flush_id;
 
   logic        multicycle_done;
-  // This signal is high when the instruction offloaded via the XIF has been accepted
-  // and does not require a writeback. If a writeback is required, the signal is high
-  // only when a valid result is available
-  logic        coproc_done;
 
   // Immediate decoding and sign extension
   logic [31:0] imm_i_type;
@@ -930,6 +926,10 @@ module cve2_id_stage #(
 
   // Core-V eXtension Interface (CV-X-IF)
   if (XInterface) begin: gen_xif
+
+    logic coproc_done;
+    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : (illegal_insn_dec ? coproc_done : ex_valid_i);
+
     assign coproc_done = (x_issue_valid_o & x_issue_ready_i & ~x_issue_resp_i.writeback) | (x_result_valid_i & x_result_i.we);
 
     // Issue Interface
@@ -939,24 +939,26 @@ module cve2_id_stage #(
     // Register Interface
     assign x_register_o.rs[0]    = rf_rdata_a_fwd;
     assign x_register_o.rs[1]    = rf_rdata_b_fwd;
-    assign x_register_o.rs[2]    = rf_rdata_c_fwd;
     assign x_register_o.rs_valid = '1;
 
     // Commit Interface
     assign x_commit_valid_o       = 1'b1;
     assign x_commit_o.commit_kill = 1'b0;
 
-    // Result Interface 
+    // Result Interface
     assign x_result_ready_o = 1'b1;
 
     assign illegal_insn_o = instr_valid_i & (illegal_csr_insn_i | (x_issue_valid_o & x_issue_ready_i & ~x_issue_resp_i.accept));
-  end 
+  end
 
   else begin: no_gen_xif
     logic          unused_x_issue_ready;
     x_issue_resp_t unused_x_issue_resp;
     logic          unused_x_result_valid;
     x_result_t     unused_x_result;
+
+
+    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : ex_valid_i;
 
     // Issue Interface
     assign x_issue_valid_o      = 1'b0;
@@ -1002,8 +1004,6 @@ module cve2_id_stage #(
   // Used by RVFI to know when to capture register read data
   // Used by ALU to access RS3 if ternary instruction.
   assign instr_first_cycle_id_o = instr_first_cycle;
-
-    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : (illegal_insn_dec ? coproc_done : ex_valid_i);
 
     assign data_req_allowed = instr_first_cycle;
 
