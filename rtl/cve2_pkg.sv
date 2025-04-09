@@ -275,6 +275,7 @@ package cve2_pkg;
   parameter int unsigned DATA_WIDTH = 32;
   parameter int unsigned NUM_RF_SSR_PORT = 3;
   parameter int unsigned NUM_RF_SSR_READ_PORT = 2;
+  parameter int unsigned NUM_RF_SSR_WRITE_PORT = 1;
   parameter int unsigned NUM_SSR = 3;
   
   // Regfile write data selection
