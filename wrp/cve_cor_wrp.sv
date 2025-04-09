@@ -9,61 +9,58 @@ import cve2_pkg::*;
 
 module cve_cor_wrp (
     // Clock and Reset
-    input  var logic                         clk,
-    input  var logic                         resetn,
+    input  var logic                                  clk,
+    input  var logic                                  resetn,
 
-    input  var logic                         test_en_i,     // enable all clock gates for testing
-    input  var logic[3:0]                    ram_cfg_i,      
-    input  var logic                         ram_cfg_en_i,  // cpnfiguration for ram
-    input  var logic                         rf_cfg_en_i,
-    input  var logic [3:0]                   rf_cfg_i,      // configuration for regfile
+    input  var logic                                  test_en_i,     // enable all clock gates for testing
+    input  var logic[3:0]                             ram_cfg_i,      
+    input  var logic                                  ram_cfg_en_i,  // cpnfiguration for ram
+    input  var logic                                  rf_cfg_en_i,
+    input  var logic [3:0]                            rf_cfg_i,      // configuration for regfile
 
-    input  var logic [31:0]                  hart_id_i,
-    input  var logic [31:0]                  boot_addr_i,
+    input  var logic [31:0]                           hart_id_i,
+    input  var logic [31:0]                           boot_addr_i,
 
     // Instruction memory interface
-    output var logic                         instr_req_o,
-    input  var logic                         instr_gnt_i,
-    input  var logic                         instr_rvalid_i,
-    output var logic [31:0]                  instr_addr_o,
-    input  var logic [31:0]                  instr_rdata_i,
-    input  var logic                         instr_err_i,
+    output var logic                                  instr_req_o,
+    input  var logic                                  instr_gnt_i,
+    input  var logic                                  instr_rvalid_i,
+    output var logic [31:0]                           instr_addr_o,
+    input  var logic [31:0]                           instr_rdata_i,
+    input  var logic                                  instr_err_i,
 
     // Data memory interface
-    output var logic                         data_req_o,
-    input  var logic                         data_gnt_i,
-    input  var logic                         data_rvalid_i,
-    output var logic                         data_we_o,
-    output var logic [3:0]                   data_be_o,
-    output var logic [31:0]                  data_addr_o,
-    output var logic [31:0]                  data_wdata_o,
-    input  var logic [31:0]                  data_rdata_i,
-    input  var logic                         data_err_i,
+    output var logic                                  data_req_o,
+    input  var logic                                  data_gnt_i,
+    input  var logic                                  data_rvalid_i,
+    output var logic                                  data_we_o,
+    output var logic [3:0]                            data_be_o,
+    output var logic [31:0]                           data_addr_o,
+    output var logic [31:0]                           data_wdata_o,
+    input  var logic [31:0]                           data_rdata_i,
+    input  var logic                                  data_err_i,
 
-    //---------------------------------------------------------------------------------
     // CV-X-IF.
     // Issue interface
-    output var logic                                  issue_valid,
-    input  var logic                                  issue_ready,
-    output var logic[$bits(x_issue_req_t_dtype)-1:0]  issue_req_flatten,
-    input  var logic[$bits(x_issue_resp_t_dtype)-1:0] issue_resp_flatten,
+    output var logic                                  x_issue_valid_o,
+    input  var logic                                  x_issue_ready_i,
+    output var logic[$bits(x_issue_req_t)-1:0]        x_issue_req_flatten_o,
+    input  var logic[$bits(x_issue_resp_t)-1:0]       x_issue_resp_flatten_i,
 
-    //CV-X-IF Register interface signals.
-    output var logic                                  register_valid,
-    input  var logic                                  register_ready,
-    output var logic[$bits(x_register_t_dtype)-1:0]   register_flatten,
+    // Register Interface 
+    output var logic[$bits(x_register_t)-1:0]         x_register_flatten_o,
 
-    //CV-X-IF Commit interface signals.
-    output var logic                                  commit_valid,
-    output var logic[$bits(x_commit_t_dtype)-1:0]     commit_flatten,
+    // Commit Interface 
+    output var logic                                  x_commit_valid_o,
+    output var logic[$bits(x_commit_t)-1:0]           x_commit_flatten_o,
 
-    //CV-X-IF Result interface signals.
-    output var logic                                  result_ready,
-    input  var logic                                  result_valid,
-    input  var logic[$bits(x_result_t_dtype)-1:0]     result_flatten,
+    // Result Interface 
+    input  var logic                                  x_result_valid_i,
+    output var logic                                  x_result_ready_o,
+    input  var logic[$bits(x_result_t)-1:0]           x_result_flatten_i,
 
     //CSR vec mode.
-    output var logic[$bits(data_csr_dtype)-1:0]       csr_vec_mode_flatten,
+    output var logic[DATA_WIDTH-1:0]                  csr_vec_mode_o,
 
     // SSR interfaces
     output var logic [NUM_RF_SSR_PORT-1:0]            ssr_valid_o,
@@ -73,26 +70,25 @@ module cve_cor_wrp (
     output var logic [31:0]                           ssr_wdata_o,
 
     // SSR config CSR register 
-    output var logic [31:0] csr_ssr_cfg_o,
-    //---------------------------------------------------------------------------------
+    output var logic [DATA_WIDTH-1:0]                 csr_ssr_start_o,
 
     // Interrupt inputs
-    input  var logic                         irq_software_i,
-    input  var logic                         irq_timer_i,
-    input  var logic                         irq_external_i,
-    input  var logic [15:0]                  irq_fast_i,
-    input  var logic                         irq_nm_i,       // non-maskeable interrupt
+    input  var logic                                  irq_software_i,
+    input  var logic                                  irq_timer_i,
+    input  var logic                                  irq_external_i,
+    input  var logic [15:0]                           irq_fast_i,
+    input  var logic                                  irq_nm_i,       // non-maskeable interrupt
 
     // Debug Interface
-    input  var logic                         debug_req_i,
-    output var logic [31:0]                  current_pc,
-    output var logic [31:0]                  next_pc,
-    output var logic [31:0]                  last_data_addr,
-    output var logic [31:0]                  exception_addr,
+    input  var logic                                  debug_req_i,
+    output var logic [31:0]                           current_pc,
+    output var logic [31:0]                           next_pc,
+    output var logic [31:0]                           last_data_addr,
+    output var logic [31:0]                           exception_addr,
 
     // CPU Control Signals
-    input  var logic                         fetch_enable_i,
-    output var logic                         core_sleep_o
+    input  var logic                                  fetch_enable_i,
+    output var logic                                  core_sleep_o
 
 );
 
@@ -104,39 +100,6 @@ always_comb begin
   ram_cfg.rf_cfg.cfg = rf_cfg_i;
 end
 
-//Interfaces definitions.
-snt_std_if  xcs_std();
-rvv_cv_x_if xcs_cv_x_if();
-status_if#(.DTYPE(data_csr_dtype)) csr_vec_mode();
-
-//std if connections.
-always_comb xcs_std.clk    = clk;
-always_comb xcs_std.resetn = resetn;
-
-// Issue interface connections
-always_comb issue_valid             = xcs_cv_x_if.issue_valid;
-always_comb xcs_cv_x_if.issue_ready = issue_ready;
-always_comb issue_req_flatten       = xcs_cv_x_if.issue_req;
-always_comb xcs_cv_x_if.issue_resp  = issue_resp_flatten;
-
-// Register interface connections
-always_comb register_valid             = xcs_cv_x_if.register_valid;
-always_comb xcs_cv_x_if.register_ready = register_ready;
-always_comb register_flatten           = xcs_cv_x_if.register;
-
-// Commit interface connections
-always_comb commit_valid   = xcs_cv_x_if.commit_valid;
-always_comb commit_flatten = xcs_cv_x_if.commit;
-
-// Result interface connections
-always_comb xcs_cv_x_if.result_valid = result_valid;
-always_comb result_ready             = xcs_cv_x_if.result_ready;
-always_comb xcs_cv_x_if.result       = result_flatten;
-
-
-//CSR status interface.
-always_comb csr_vec_mode_flatten = csr_vec_mode.packet;;
-
 crash_dump_t crash_dump;
 always_comb begin
   current_pc      = crash_dump.current_pc;
@@ -145,17 +108,19 @@ always_comb begin
   exception_addr  = crash_dump.exception_addr;
 end
 
+localparam int unsigned ENABLE_XIF = 1;
+localparam logic [NUM_SSR-1:0][4:0] SSR_ADDR = '{5'd28, 5'd29, 5'd30};
 
-
-
-
-cve2_top i_cve2_top (
+cve2_top # (
+  .XInterface(ENABLE_XIF),
+  .SSR_ADDR(SSR_ADDR)
+) i_cve2_top(
 
   // Clock and Reset
   .clk_i(clk),
   .rst_ni(resetn),
 
-  .test_en_i(test_en_i),     // enable all clock gates for testing
+  .test_en_i(test_en_i),     
   .ram_cfg_i(ram_cfg),
 
   .hart_id_i(hart_id_i),
@@ -180,14 +145,27 @@ cve2_top i_cve2_top (
   .data_rdata_i(data_rdata_i),
   .data_err_i(data_err_i),
 
-//---------------------------------------------------------------------------------
-  // CV-X-IF.
-  .xcs_cv_x_if_issue(xcs_cv_x_if.cv_x_if_issue_mst),
-  .xcs_cv_x_if_register(xcs_cv_x_if.cv_x_if_register_mst),
-  .xcs_cv_x_if_commit(xcs_cv_x_if.cv_x_if_commit_mst),
-  .xcs_cv_x_if_result(xcs_cv_x_if.cv_x_if_result_mst),
+  // Core-V eXtension Interface (CV-X-IF)
+  // Issue Interface
+  .x_issue_valid_o(x_issue_valid_o),
+  .x_issue_ready_i(x_issue_ready_i),
+  .x_issue_req_o(x_issue_req_flatten_o),
+  .x_issue_resp_i(x_issue_resp_flatten_i),
+
+  // Register Interface   
+  .x_register_o(x_register_flatten_o),
+
+  // Commit Interface   
+  .x_commit_valid_o(x_commit_valid_o),
+  .x_commit_o(x_commit_flatten_o),
+
+  // Result Interface   
+  .x_result_valid_i(x_result_valid_i),
+  .x_result_ready_o(x_result_ready_o),
+  .x_result_i(x_result_flatten_i),
+
   // CSR vec mode
-  .csr_vec_mode(csr_vec_mode),
+  .csr_vec_mode_o(csr_vec_mode_o),
 
   // SSR interfaces
   .ssr_valid_o(ssr_valid_o),
@@ -197,15 +175,14 @@ cve2_top i_cve2_top (
   .ssr_wdata_o(ssr_wdata_o),
 
   // SSR config CSR register 
-  .csr_ssr_cfg_o(csr_ssr_cfg_o),
-//---------------------------------------------------------------------------------
+  .csr_ssr_start_o(csr_ssr_start_o),
 
   // Interrupt inputs
   .irq_software_i(irq_software_i),
   .irq_timer_i(irq_timer_i),
   .irq_external_i(irq_external_i),
   .irq_fast_i(irq_fast_i),
-  .irq_nm_i(irq_nm_i),       // non-maskeable interrupt
+  .irq_nm_i(irq_nm_i),       
 
   // Debug Interface
   .debug_req_i(debug_req_i),

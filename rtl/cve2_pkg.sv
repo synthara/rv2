@@ -272,9 +272,6 @@ package cve2_pkg;
     IMM_B_INCR_ADDR
   } imm_b_sel_e;
 
-
-
-//---------------------------------------------------------------------------------
   parameter int unsigned DATA_WIDTH = 32;
   parameter int unsigned NUM_RF_SSR_PORT = 3;
   parameter int unsigned NUM_RF_SSR_READ_PORT = 2;
@@ -286,7 +283,6 @@ package cve2_pkg;
     RF_WD_CSR,
     RF_WD_COPROC
   } rf_wd_sel_e;
-//---------------------------------------------------------------------------------
 
   //////////////
   // IF stage //
