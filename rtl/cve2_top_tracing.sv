@@ -16,34 +16,34 @@ module cve2_top_tracing import cve2_pkg::*; #(
   parameter bit          XInterface       = 1'b0
 ) (
   // Clock and Reset
-  input  logic                                 clk_i,
-  input  logic                                 rst_ni,
+  input  logic                                  clk_i,
+  input  logic                                  rst_ni,
 
-  input  logic                                 test_en_i,     // enable all clock gates for testing
-  input  prim_ram_1p_pkg::ram_1p_cfg_t         ram_cfg_i,
+  input  logic                                  test_en_i,     // enable all clock gates for testing
+  input  prim_ram_1p_pkg::ram_1p_cfg_t          ram_cfg_i,
 
 
-  input  logic [31:0]                          hart_id_i,
-  input  logic [31:0]                          boot_addr_i,
+  input  logic [31:0]                           hart_id_i,
+  input  logic [31:0]                           boot_addr_i,
 
   // Instruction memory interface
-  output logic                                 instr_req_o,
-  input  logic                                 instr_gnt_i,
-  input  logic                                 instr_rvalid_i,
-  output logic [31:0]                          instr_addr_o,
-  input  logic [31:0]                          instr_rdata_i,
-  input  logic                                 instr_err_i,
+  output logic                                  instr_req_o,
+  input  logic                                  instr_gnt_i,
+  input  logic                                  instr_rvalid_i,
+  output logic [31:0]                           instr_addr_o,
+  input  logic [31:0]                           instr_rdata_i,
+  input  logic                                  instr_err_i,
 
   // Data memory interface
-  output logic                                 data_req_o,
-  input  logic                                 data_gnt_i,
-  input  logic                                 data_rvalid_i,
-  output logic                                 data_we_o,
-  output logic [3:0]                           data_be_o,
-  output logic [31:0]                          data_addr_o,
-  output logic [31:0]                          data_wdata_o,
-  input  logic [31:0]                          data_rdata_i,
-  input  logic                                 data_err_i,
+  output logic                                  data_req_o,
+  input  logic                                  data_gnt_i,
+  input  logic                                  data_rvalid_i,
+  output logic                                  data_we_o,
+  output logic [3:0]                            data_be_o,
+  output logic [31:0]                           data_addr_o,
+  output logic [31:0]                           data_wdata_o,
+  input  logic [31:0]                           data_rdata_i,
+  input  logic                                  data_err_i,
 
   // Core-V eXtension Interface
   // Issue Interface
@@ -72,7 +72,7 @@ module cve2_top_tracing import cve2_pkg::*; #(
   input  logic [NUM_RF_SSR_PORT-1:0]            ssr_ready_i,
   output logic [NUM_RF_SSR_PORT-1:0][4:0]       ssr_addr_o,
   input  logic [NUM_RF_SSR_READ_PORT-1:0][31:0] ssr_rdata_i,
-  output logic [31:0]                           ssr_wdata_o,
+  output logic [DATA_WIDTH-1:0]                 ssr_wdata_o,
 
   // SSR config CSR register 
   output logic [DATA_WIDTH-1:0]                 csr_ssr_start_o,
