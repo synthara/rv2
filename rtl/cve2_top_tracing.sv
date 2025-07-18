@@ -55,6 +55,9 @@ module cve2_top_tracing import cve2_pkg::*; #(
   input  logic                         debug_req_i,
   output crash_dump_t                  crash_dump_o,
 
+  output logic [31:0]                  program_counter_id,
+  output logic [31:0]                  program_counter_if,
+
   // CPU Control Signals
   input  logic                         fetch_enable_i,
   output logic                         core_sleep_o
@@ -148,6 +151,9 @@ module cve2_top_tracing import cve2_pkg::*; #(
 
     .debug_req_i,
     .crash_dump_o,
+
+    .program_counter_id(program_counter_id),
+    .program_counter_if(program_counter_if),
 
     .rvfi_valid,
     .rvfi_order,

@@ -68,6 +68,9 @@ module cve2_core import cve2_pkg::*; #(
   // SEC_CM: EXCEPTION.CTRL_FLOW.LOCAL_ESC
   // SEC_CM: EXCEPTION.CTRL_FLOW.GLOBAL_ESC
 
+  output logic [31:0]                  program_counter_id,
+  output logic [31:0]                  program_counter_if,
+
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follows
   // the convention of RISC-V Formal Interface Specification.
@@ -279,6 +282,9 @@ module cve2_core import cve2_pkg::*; #(
   // Before going to sleep, wait for I- and D-side
   // interfaces to finish ongoing operations.
   assign core_busy_o = ctrl_busy | if_busy | lsu_busy;
+
+  always_comb program_counter_id = pc_id;
+  always_comb program_counter_if = pc_if;
 
   //////////////
   // IF stage //
