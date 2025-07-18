@@ -939,6 +939,7 @@ module cve2_id_stage #(
     // Register Interface
     assign x_register_o.rs[0]    = rf_rdata_a_fwd;
     assign x_register_o.rs[1]    = rf_rdata_b_fwd;
+    assign x_register_o.rs[2]    = rf_rdata_c_fwd;
     assign x_register_o.rs_valid = '1;
 
     // Commit Interface
