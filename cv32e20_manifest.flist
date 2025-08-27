@@ -95,4 +95,4 @@ ${DESIGN_RTL_DIR}/netlist/gf22nsdvlogl32edp116a.v
 ${DESIGN_RTL_DIR}/netlist/gf22nsdvlogl36eda116a.v
 ${DESIGN_RTL_DIR}/netlist/gf22nsdvlogl36edl116a.v
 ${DESIGN_RTL_DIR}/netlist/gf22nsdvlogl36edp116a.v
-/scratch/fdm/cve/synthpnr/cor/base/cve_synth/run_output/cve_cor_wrp.final.vg
+${DESIGN_RTL_DIR}/netlist/trs_cor_wrp.final.vg
