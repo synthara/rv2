@@ -927,10 +927,8 @@ module cve2_id_stage #(
   // Core-V eXtension Interface (CV-X-IF)
   if (XInterface) begin: gen_xif
 
+    logic x_issue_hs, x_result_hs;
     logic coproc_done;
-    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : (illegal_insn_dec ? coproc_done : ex_valid_i);
-
-    assign coproc_done = (x_issue_valid_o & x_issue_ready_i & ~x_issue_resp_i.writeback) | (x_result_valid_i & x_result_i.we);
 
     // Issue Interface
     assign x_issue_valid_o     = instr_executing & illegal_insn_dec & (id_fsm_q == FIRST_CYCLE);
@@ -948,6 +946,13 @@ module cve2_id_stage #(
 
     // Result Interface
     assign x_result_ready_o = 1'b1;
+
+    // XIF handshake signals
+    assign x_issue_hs   = x_issue_valid_o & x_issue_ready_i;
+    assign x_result_hs  = x_result_valid_i & x_result_ready_o;
+
+    assign coproc_done     = (x_issue_hs & ~x_issue_resp_i.writeback) | (x_result_hs & x_result_i.we);
+    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : (illegal_insn_dec ? coproc_done : ex_valid_i);
 
     assign illegal_insn_o = instr_valid_i & (illegal_csr_insn_i | (x_issue_valid_o & x_issue_ready_i & ~x_issue_resp_i.accept));
   end
